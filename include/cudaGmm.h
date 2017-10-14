@@ -6,7 +6,7 @@
 #include "gmm.h"
 
 struct GMM* cudaFit(
-	const double* X, 
+	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
 	const size_t numComponents,

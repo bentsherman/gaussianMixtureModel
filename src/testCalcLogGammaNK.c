@@ -13,37 +13,37 @@
 #include "gmm.h"
 #include "cudaWrappers.h"
 
-typedef void (*CalcLogGammaNKWrapper)(const size_t, const size_t, const double*, double*);
+typedef void (*CalcLogGammaNKWrapper)(const size_t, const size_t, const float*, float*);
 
 void test1DStandardNormalLogGammaNK(int gnkIncPik, CalcLogGammaNKWrapper target) {
 	const size_t pointDim = 1;
 	const size_t numPoints = 1024;
 	const size_t numComponents = 1;
 
-	double sigmaL[pointDim * pointDim];
-	memset(sigmaL, 0, pointDim * pointDim * sizeof(double));
+	float sigmaL[pointDim * pointDim];
+	memset(sigmaL, 0, pointDim * pointDim * sizeof(float));
 	for(size_t i = 0; i < pointDim; ++i) {
 		sigmaL[i * pointDim + i] = 1;
 	}
 
-	double det = 1;
+	float det = 1;
 	for(size_t i = 0; i < pointDim; ++i) {
 		det *= sigmaL[i * pointDim + i] * sigmaL[i * pointDim + i];
 	}
 
-	double logNormalizer = -0.5 * pointDim * log(2.0 * M_PI) - 0.5 * log(det);
+	float logNormalizer = -0.5 * pointDim * logf(2.0 * M_PI) - 0.5 * logf(det);
 
-	double mu[pointDim];
-	memset(mu, 0, pointDim * sizeof(double));
+	float mu[pointDim];
+	memset(mu, 0, pointDim * sizeof(float));
 
-	double X[pointDim * numPoints];
-	memset(X, 0, pointDim * numPoints * sizeof(double));
+	float X[pointDim * numPoints];
+	memset(X, 0, pointDim * numPoints * sizeof(float));
 	for(size_t i = 0; i < numPoints; ++i) {
-		X[i * pointDim + 0] = 3.0 * ( ( (double)i - (double)numPoints/2 ) / (double)(numPoints/2.0) );
+		X[i * pointDim + 0] = 3.0 * ( ( (float)i - (float)numPoints/2 ) / (float)(numPoints/2.0) );
 	}
 
-	double logP[numPoints];
-	memset(logP, 0, numPoints * sizeof(double));
+	float logP[numPoints];
+	memset(logP, 0, numPoints * sizeof(float));
 
 	struct Component phi;
 	phi.mu = mu;
@@ -51,35 +51,35 @@ void test1DStandardNormalLogGammaNK(int gnkIncPik, CalcLogGammaNKWrapper target)
 	phi.normalizer = logNormalizer;
 	logMvNormDist(&phi, pointDim, X, numPoints, logP);
 	
-	double logPi[numComponents];
-	double uniformPi = 1.0 / (double)numComponents;
+	float logPi[numComponents];
+	float uniformPi = 1.0 / (float)numComponents;
 	for(size_t k = 0; k < numComponents; ++k) {
-		logPi[k] = log(uniformPi);
+		logPi[k] = logf(uniformPi);
 	}
 
-	double loggamma[numPoints];
-	memcpy(loggamma, logP, numPoints * sizeof(double));
+	float loggamma[numPoints];
+	memcpy(loggamma, logP, numPoints * sizeof(float));
 
 	target(numPoints, numComponents, logPi, loggamma);
 
 	for(size_t i = 0; i < numPoints; ++i) {
-		double sum = 0;
+		float sum = 0;
 		for(size_t k = 0; k < numComponents; ++k) {
 			sum += logPi[k] + logP[k * numPoints + i];
 		}
 
 		for(size_t k = 0; k < numComponents; ++k) {
-			double actual = loggamma[k * numPoints + i];
+			float actual = loggamma[k * numPoints + i];
 			assert(actual != -INFINITY);
 			assert(actual != INFINITY);
 			assert(actual == actual);
 
-			double expected = logP[k * numPoints + i] - sum;
+			float expected = logP[k * numPoints + i] - sum;
 			if(gnkIncPik) {
 				expected += logPi[k];
 			}
 
-			double absDiff = fabs(expected - actual);
+			float absDiff = fabsf(expected - actual);
 			if(absDiff >= DBL_EPSILON) {
 				printf("gamma_{n = %zu, k = %zu} = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
 					i, k, actual, expected, absDiff);
@@ -92,14 +92,14 @@ void test1DStandardNormalLogGammaNK(int gnkIncPik, CalcLogGammaNKWrapper target)
 
 void cpuCalcLogGammaNKWrapper(
 	const size_t numPoints, const size_t numComponents,
-	const double* logPi, double* logP
+	const float* logPi, float* logP
 ) {
 	calcLogGammaNK(logPi, numComponents, 0, numPoints, logP, numPoints);
 }
 
 void gpuCalcLogGammaNKWrapper(
 	const size_t numPoints, const size_t numComponents,
-	const double* logPi, double* logP
+	const float* logPi, float* logP
 ) {
 	gpuCalcLogGammaNK(numPoints, numComponents, logPi, logP);
 }

@@ -8,25 +8,25 @@
 
 // These are resources accessed by all threads.
 struct SharedThreadStartArgs {
-	const double* X;
+	const float* X;
 	size_t numPoints;
 	size_t pointDim;
 
 	struct GMM* gmm;
 
-	double tolerance;
+	float tolerance;
 	size_t maxIterations;
-	double prevLogL;
-	double currentLogL;
+	float prevLogL;
+	float currentLogL;
 
 	int shouldContinue;
 
-	double* logpi;
-	double* loggamma;
-	double* logGamma;
-	double logGammaSum;
+	float* logpi;
+	float* loggamma;
+	float* logGamma;
+	float logGammaSum;
 
-	double* logLK;
+	float* logLK;
 	size_t numProcesses;
 
 	struct Barrier* barrier;
@@ -61,7 +61,7 @@ void* parallelFitStart(
 );
 
 struct GMM* parallelFit(
-	const double* X, 
+	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
 	const size_t numComponents,

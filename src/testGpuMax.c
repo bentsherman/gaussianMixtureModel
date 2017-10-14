@@ -8,12 +8,12 @@
 
 #include "cudaWrappers.h"
 
-void test(const size_t N, double* a) {
+void test(const size_t N, float* a) {
 	for(size_t i = 0; i < N; ++i) {
 		a[i] = i;
 	}
 
-	double host_max = -INFINITY;
+	float host_max = -INFINITY;
 
 	for(size_t i = 0; i < N; ++i) {
 		if(host_max < a[i]) {
@@ -21,7 +21,7 @@ void test(const size_t N, double* a) {
 		}
 	}	
 
-	double device_max = -INFINITY;
+	float device_max = -INFINITY;
 
 	device_max = gpuMax(N, a);
 
@@ -29,7 +29,7 @@ void test(const size_t N, double* a) {
 	assert(device_max != INFINITY);
 	assert(device_max == device_max);
 
-	double absDiff = fabs(host_max - device_max);
+	float absDiff = fabsf(host_max - device_max);
 	if(absDiff >= DBL_EPSILON) {
 		printf("N: %zu, host_max: %.16f, device_max: %.16f, absDiff: %.16f\n", 
 			N, host_max, device_max, absDiff
@@ -44,7 +44,7 @@ void testPowTwos() {
 	const size_t maxN = 16 * 1048576;
 
 	for(size_t N = minN; N <= maxN; N *= 2) {
-		double* a = (double*) malloc(N * sizeof(double));
+		float* a = (float*) malloc(N * sizeof(float));
 		test(N, a);
 		free(a);
 	}
@@ -55,7 +55,7 @@ void testEvens() {
 	const size_t maxN = 10000;
 
 	for(size_t N = minN; N <= maxN; N += 8) {
-		double* a = (double*) malloc(N * sizeof(double));
+		float* a = (float*) malloc(N * sizeof(float));
 		test(N, a);
 		free(a);
 	}
@@ -66,7 +66,7 @@ void testOdds() {
 	const size_t maxN = 10000;
 
 	for(size_t N = minN; N <= maxN; N += 9) {
-		double* a = (double*) malloc(N * sizeof(double));
+		float* a = (float*) malloc(N * sizeof(float));
 		test(N, a);
 		free(a);
 	}

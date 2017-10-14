@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
 	}
 
 	size_t numPoints = 0, pointDim = 0;
-	double* data = parseDatFile(argv[1], &numPoints, &pointDim);
+	float* data = parseDatFile(argv[1], &numPoints, &pointDim);
 	if(data == NULL) {
 		return EXIT_FAILURE;
 	}
@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
 	struct GMM* gmm = cudaFit(data, numPoints, pointDim, numComponents, 100);
 
 	gettimeofday(&stop, NULL);
-	double elapsedSec = calcElapsedSec(&start, &stop);
+	float elapsedSec = calcElapsedSec(&start, &stop);
 
 	fprintf(stdout, "{\n");
 	fprintf(stdout, "\"file\": \"%s\",\n", argv[1]);

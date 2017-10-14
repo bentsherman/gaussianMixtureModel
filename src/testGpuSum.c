@@ -8,15 +8,15 @@
 
 #include "cudaWrappers.h"
 
-void test(const size_t N, const size_t pointDim, double* a) {
+void test(const size_t N, const size_t pointDim, float* a) {
 	for(size_t i = 0; i < N; ++i) {
 		for(size_t j = 0; j < pointDim; ++j) {
 			a[pointDim * i + j ] = i + j;
 		}
 	}
 
-	double host_sum[pointDim];
-	memset(host_sum, 0, pointDim * sizeof(double));
+	float host_sum[pointDim];
+	memset(host_sum, 0, pointDim * sizeof(float));
 
 	for(size_t i = 0; i < N; ++i) {
 		for(size_t j = 0; j < pointDim; ++j) {
@@ -24,8 +24,8 @@ void test(const size_t N, const size_t pointDim, double* a) {
 		}
 	}	
 
-	double device_sum[pointDim];
-	memset(device_sum, 0, pointDim * sizeof(double));
+	float device_sum[pointDim];
+	memset(device_sum, 0, pointDim * sizeof(float));
 
 	gpuSum(N, pointDim, a, device_sum);
 
@@ -34,7 +34,7 @@ void test(const size_t N, const size_t pointDim, double* a) {
 		assert(device_sum[i] != INFINITY);
 		assert(device_sum[i] == device_sum[i]);
 
-		double absDiff = fabs(host_sum[i] - device_sum[i]);
+		float absDiff = fabsf(host_sum[i] - device_sum[i]);
 		if(absDiff >= DBL_EPSILON) {
 			printf("N: %zu, i: %zu, host_sum: %.16f, device_sum: %.16f, absDiff: %.16f\n", 
 				N, i, host_sum[i], device_sum[i], absDiff
@@ -51,7 +51,7 @@ void test1DPowTwos() {
 	const size_t pointDim = 1;
 
 	for(size_t N = minN; N <= maxN; N *= 2) {
-		double* a = (double*) malloc(pointDim * N * sizeof(double));
+		float* a = (float*) malloc(pointDim * N * sizeof(float));
 		test(N, pointDim, a);
 		free(a);
 	}
@@ -63,7 +63,7 @@ void test3DEvens() {
 	const size_t pointDim = 3;
 
 	for(size_t N = minN; N <= maxN; N += 8) {
-		double* a = (double*) malloc(pointDim * N * sizeof(double));
+		float* a = (float*) malloc(pointDim * N * sizeof(float));
 		test(N, pointDim, a);
 		free(a);
 	}
@@ -75,7 +75,7 @@ void test2DOdds() {
 	const size_t pointDim = 2;
 
 	for(size_t N = minN; N <= maxN; N += 9) {
-		double* a = (double*) malloc(pointDim * N * sizeof(double));
+		float* a = (float*) malloc(pointDim * N * sizeof(float));
 		test(N, pointDim, a);
 		free(a);
 	}

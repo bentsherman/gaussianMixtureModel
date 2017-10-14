@@ -56,22 +56,22 @@ void prepareCovariance(struct Component* component, const size_t pointDim) {
 
 	// log det(Sigma) = log det(L L^T) = log det(L)^2 = 2 log prod L_{i,i} 
 	//		  = 2 sum log L_{i,i}
-	double logDet = 1.0;
+	float logDet = 1.0;
 	for (size_t i = 0; i < pointDim; ++i) {
-		double diag = component->sigmaL[i * pointDim + i];
+		float diag = component->sigmaL[i * pointDim + i];
 		assert(diag > 0);
-		logDet += log(diag);
+		logDet += logf(diag);
 	}
 
 	logDet *= 2;
 
-	component->normalizer = - 0.5 * (pointDim * log(2.0 * PI) + logDet);
+	component->normalizer = - 0.5 * (pointDim * logf(2.0 * PI) + logDet);
 }
 
 void logMvNormDist(
 	const struct Component* component, const size_t pointDim,
-	const double* X, const size_t numPoints, 
-	double* P
+	const float* X, const size_t numPoints, 
+	float* P
 ) {
 	// 2015-09-23 GEL Through profiling (Sleepy CS), found that program was 
 	// spending most of its time in this method. Decided to change from 
@@ -93,9 +93,9 @@ void logMvNormDist(
 	assert(numPoints > 0);
 	assert(P != NULL);
 
-	double* XM = (double*)malloc(numPoints * pointDim * sizeof(double));
-	double* SXM = (double*)malloc(numPoints * pointDim * sizeof(double));
-	double* innerProduct = (double*)malloc(numPoints * sizeof(double));
+	float* XM = (float*)malloc(numPoints * pointDim * sizeof(float));
+	float* SXM = (float*)malloc(numPoints * pointDim * sizeof(float));
+	float* innerProduct = (float*)malloc(numPoints * sizeof(float));
 
 	// Let XM = (x - m)
 	for (size_t point = 0; point < numPoints; ++point) {
@@ -115,14 +115,14 @@ void logMvNormDist(
 		);
 
 	// XM^T SXM
-	memset(innerProduct, 0, numPoints * sizeof(double));
+	memset(innerProduct, 0, numPoints * sizeof(float));
 	for (size_t point = 0; point < numPoints; ++point) {
 		for (size_t dim = 0; dim < pointDim; ++dim) {
 			innerProduct[point] += XM[point * pointDim + dim] * SXM[point * pointDim + dim];
 		}
 	}
 
-	// Compute P exp( -0.5 innerProduct ) / normalizer
+	// Compute P expf( -0.5 innerProduct ) / normalizer
 	for (size_t point = 0; point < numPoints; ++point) {
 		// Normalizer already has negative sign on it.
 		P[point] = -0.5 * innerProduct[point] + component->normalizer;
@@ -134,25 +134,25 @@ void logMvNormDist(
 	free(innerProduct);
 }
 
-double sampleStandardNormal() {
+float sampleStandardNormal() {
 	// Ratio-of-uniforms method
 	// Computer Generation of Random Variables using the Ratio of Uniform Deviates
 	// Kinderman, Monahan 1977
 
-	static const double d = +0.857763884960707; // sqrt(2.0 * exp(-1));
+	static const float d = +0.857763884960707; // sqrtf(2.0 * expf(-1));
 
-	double u1 = 0, v2 = 0, u2 = 0, x = 0;	
+	float u1 = 0, v2 = 0, u2 = 0, x = 0;	
 	do {
-		u1 = rand() / (double)RAND_MAX;
-		v2 = rand() / (double)RAND_MAX;
+		u1 = rand() / (float)RAND_MAX;
+		v2 = rand() / (float)RAND_MAX;
 		u2 = (2.0 * v2 - 1.0) * d;
 		x = u2 / u1;
-	} while ( u1 * u1 > exp(-0.5 * x * x) );
+	} while ( u1 * u1 > expf(-0.5 * x * x) );
 
 	return x;
 }
 
-double* sampleWishart(const size_t dimension, const size_t degreeFreedom) {
+float* sampleWishart(const size_t dimension, const size_t degreeFreedom) {
 	// Section 3, Wishart Distributions and Inverse-Wishart Sampling S. Sawyer
 
 	// A numerical procedure to generate a sample covariance matrix
@@ -160,18 +160,18 @@ double* sampleWishart(const size_t dimension, const size_t degreeFreedom) {
 	assert(dimension > 0);
 	assert(degreeFreedom > dimension + 1);
 
-	double V[dimension];
+	float V[dimension];
 	for(size_t i = 0; i < dimension; ++i) {
 		// V_{i} is sampled from a chi-square distribution with n - i + 1 degrees of 
 		// freedom.
 		V[i] = 0;
 		for(size_t j = 0; j <= degreeFreedom - i; ++j) {
-			const double x = sampleStandardNormal();
+			const float x = sampleStandardNormal();
 			V[i] += x * x;
 		}
 	}
 
-	double N[dimension * dimension];
+	float N[dimension * dimension];
 	for(size_t i = 0; i < dimension; ++i) {
 		const size_t ii = i * dimension + i;
 		N[ii] = 0;
@@ -185,20 +185,20 @@ double* sampleWishart(const size_t dimension, const size_t degreeFreedom) {
 		}
 	}
 
-	double* W = (double*)checkedCalloc(dimension*dimension, sizeof(double));
+	float* W = (float*)checkedCalloc(dimension*dimension, sizeof(float));
 	W[0] = V[0];
 	for(size_t i = 1; i < dimension; ++i) {
 		const size_t ii = i * dimension + i;
 		for(size_t r = 0; r <= i - 1; ++r) {
 			const size_t ri = r * dimension + i;
-			const double nri = N[ri];
+			const float nri = N[ri];
 			W[ii] += nri * nri;
 		}
 	}
 
 	for(size_t i = 0; i < dimension; ++i) {
 		assert(V[i] > 0);
-		V[i] = sqrt(V[i]);
+		V[i] = sqrtf(V[i]);
 	}
 
 	for(size_t i = 1; i < dimension; ++i) {
@@ -224,27 +224,27 @@ double* sampleWishart(const size_t dimension, const size_t degreeFreedom) {
 	return W;
 }
 
-double* sampleWishartCholesky(const size_t dimension, const size_t degreeFreedom) {
+float* sampleWishartCholesky(const size_t dimension, const size_t degreeFreedom) {
 	// Eqn (3.2) Wishart Distributions and Inverse-Wishart Sampling S. Sawyer
 
 	assert(dimension > 0);
 	assert(degreeFreedom > dimension + 1);
 
-	double V[dimension];
+	float V[dimension];
 	for(size_t i = 0; i < dimension; ++i) {
 		// V_{i} is sampled from a chi-square distribution with n - i + 1 degrees of 
 		// freedom.
 		V[i] = 0;
 		for(size_t j = 0; j <= degreeFreedom - i; ++j) {
-			const double x = sampleStandardNormal();
+			const float x = sampleStandardNormal();
 			V[i] += x * x;
 		}
 	}
 
-	double* L = (double*)checkedCalloc(dimension * dimension, sizeof(double));
+	float* L = (float*)checkedCalloc(dimension * dimension, sizeof(float));
 	for(size_t i = 0; i < dimension; ++i) {
 		const size_t ii = i * dimension + i;
-		L[ii] = sqrt(V[i]);
+		L[ii] = sqrtf(V[i]);
 
 		for(size_t j = 0; j < i; ++j) {
 			// N_{i,j} sampled from a standard normal distribution

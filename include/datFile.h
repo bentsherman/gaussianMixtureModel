@@ -19,7 +19,7 @@ int isValidDatFile(
 	size_t* outNumLines, size_t* outValuesPerLine
 	);
  
-double* parseDatFile(
+float* parseDatFile(
 	const char* filePath, 
 	size_t* outNumPoints, size_t* outPointDim
 	);

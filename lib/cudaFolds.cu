@@ -9,13 +9,13 @@
 // Find sum of a vector array
 // ----------------------------------------------------------------------------
 
-__device__ void devVecAdd(size_t pointDim, double* dest, double* src) {
+__device__ void devVecAdd(size_t pointDim, float* dest, float* src) {
 	for(size_t i = 0; i < pointDim; ++i) {
 		dest[i] += src[i];
 	}
 }
 
-__global__ void kernElementWiseSum(const size_t numPoints, const size_t pointDim, double* dest, double* src) {
+__global__ void kernElementWiseSum(const size_t numPoints, const size_t pointDim, float* dest, float* src) {
 	// Called to standardize arrays to be a power of two
 
 	// Assumes a 2D grid of 1D blocks
@@ -27,14 +27,14 @@ __global__ void kernElementWiseSum(const size_t numPoints, const size_t pointDim
 	}
 }
 
-__global__ void kernBlockWiseSum(const size_t numPoints, const size_t pointDim, double* dest) {
+__global__ void kernBlockWiseSum(const size_t numPoints, const size_t pointDim, float* dest) {
 	// Assumes a 2D grid of 1024x1 1D blocks
 	int b = blockIdx.y * gridDim.x + blockIdx.x;
 	int i = b * blockDim.x + threadIdx.x;
 
 	// call repeatedly for each dimension where dest is assumed to begin at dimension d
 
-	__shared__ double blockSum[1024];
+	__shared__ float blockSum[1024];
 
 	if(threadIdx.x >= numPoints) {
 		blockSum[threadIdx.x] = 0;
@@ -56,7 +56,7 @@ __global__ void kernBlockWiseSum(const size_t numPoints, const size_t pointDim, 
 	}	
 }
 
-__global__ void kernMoveMem(const size_t numPoints, const size_t pointDim, const size_t s, double* A) {
+__global__ void kernMoveMem(const size_t numPoints, const size_t pointDim, const size_t s, float* A) {
 	int b = blockIdx.y * gridDim.x + blockIdx.x;
 	int i = b * blockDim.x + threadIdx.x;
 
@@ -69,13 +69,13 @@ __global__ void kernMoveMem(const size_t numPoints, const size_t pointDim, const
 	// After
 	// [a..d..g..] [j........] [ghi......] [.........]
 
-	__shared__ double mem[1024];
+	__shared__ float mem[1024];
 	mem[threadIdx.x] = A[s * i * pointDim];
 	__syncthreads();
 	A[i * pointDim] = mem[threadIdx.x];
 }
 
-__host__ void cudaArraySum(cudaDeviceProp* deviceProp, size_t numPoints, const size_t pointDim, double* device_A, cudaStream_t stream) {
+__host__ void cudaArraySum(cudaDeviceProp* deviceProp, size_t numPoints, const size_t pointDim, float* device_A, cudaStream_t stream) {
 	assert(deviceProp != NULL);
 	assert(numPoints > 0);
 	assert(pointDim > 0);
@@ -113,7 +113,7 @@ __host__ void cudaArraySum(cudaDeviceProp* deviceProp, size_t numPoints, const s
 // Find maximum of a scalar array
 // ----------------------------------------------------------------------------
 
-__global__ void kernElementWiseMax(const size_t numPoints, double* dest, double* src) {
+__global__ void kernElementWiseMax(const size_t numPoints, float* dest, float* src) {
 	// Called to standardize arrays to be a power of two
 
 	// Assumes a 2D grid of 1D blocks
@@ -127,12 +127,12 @@ __global__ void kernElementWiseMax(const size_t numPoints, double* dest, double*
 	}
 }
 
-__global__ void kernBlockWiseMax(const size_t numPoints, double* dest) {
+__global__ void kernBlockWiseMax(const size_t numPoints, float* dest) {
 	// Assumes a 2D grid of 1024x1 1D blocks
 	int b = blockIdx.y * gridDim.x + blockIdx.x;
 	int i = b * blockDim.x + threadIdx.x;
 
-	__shared__ double blockMax[1024];
+	__shared__ float blockMax[1024];
 
 	if(threadIdx.x >= numPoints) {
 		blockMax[threadIdx.x] = -INFINITY;
@@ -156,7 +156,7 @@ __global__ void kernBlockWiseMax(const size_t numPoints, double* dest) {
 	}
 }
 
-__host__ void cudaArrayMax(cudaDeviceProp* deviceProp, size_t numPoints, double* device_A, cudaStream_t stream) {
+__host__ void cudaArrayMax(cudaDeviceProp* deviceProp, size_t numPoints, float* device_A, cudaStream_t stream) {
 	assert(deviceProp != NULL);
 	assert(numPoints > 0);
 	assert(device_A != NULL);

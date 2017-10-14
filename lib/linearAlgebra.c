@@ -7,7 +7,7 @@
 
 #include "linearAlgebra.h"
 
-void choleskyDecomposition(const double* A, const size_t pointDim, double* L) {
+void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
 	// p. 157-158., Cholesky Factorization, 4.2 LU and Cholesky Factorizations, 
 	// Numerical Analysis by Kincaid, Cheney.
 
@@ -17,15 +17,15 @@ void choleskyDecomposition(const double* A, const size_t pointDim, double* L) {
 	for(size_t i = 0; i < pointDim; ++i) {
 		for(size_t j = 0; j < pointDim; ++j) {
 			// Check that we are real valued
-			double a = A[i * pointDim + j];
-			if(a != a || fabs(a) == INFINITY) {
+			float a = A[i * pointDim + j];
+			if(a != a || fabsf(a) == INFINITY) {
 				fprintf(stdout, "A[%zu, %zu] = %f should be real value\n", i,j,a);
 				assert(0);
 			}
 
 			// Check that we are symmetric
-			double b = A[j * pointDim + i];
-			double absDiff = fabs(a - b);
+			float b = A[j * pointDim + i];
+			float absDiff = fabsf(a - b);
 			if(absDiff >= 2.0 * DBL_EPSILON) {
 				fprintf(stdout, "A[%zu, %zu] should be symmetric (%f != %f). absdiff: %.16f\n", 
 					i, j, a, b, absDiff);
@@ -36,13 +36,13 @@ void choleskyDecomposition(const double* A, const size_t pointDim, double* L) {
 	
 	// L is the resulting lower diagonal portion of A = LL^T
 	assert(L != NULL);
-	memset(L, 0, sizeof(double) * pointDim * pointDim);
+	memset(L, 0, sizeof(float) * pointDim * pointDim);
 
 	for (size_t k = 0; k < pointDim; ++k) {
-		double sum = 0;
+		float sum = 0;
 		for (int s = 0; s < k; ++s) {
-			const double l = L[k * pointDim + s];
-			const double ll = l * l;
+			const float l = L[k * pointDim + s];
+			const float ll = l * l;
 			assert(ll == ll);
 			assert(ll != -INFINITY);
 			assert(ll != INFINITY);
@@ -71,9 +71,9 @@ void choleskyDecomposition(const double* A, const size_t pointDim, double* L) {
 			break;
 		}
 
-		L[k * pointDim + k] = sqrt(sum);
+		L[k * pointDim + k] = sqrtf(sum);
 		for (int i = k + 1; i < pointDim; ++i) {
-			double subsum = 0;
+			float subsum = 0;
 			for (int s = 0; s < k; ++s)
 				subsum += L[i * pointDim + s] * L[k * pointDim + s];
 
@@ -82,7 +82,7 @@ void choleskyDecomposition(const double* A, const size_t pointDim, double* L) {
 	}
 }
 
-void solvePositiveDefinite(const double* L, const double* B, double* X, const size_t pointDim, const size_t numPoints) {
+void solvePositiveDefinite(const float* L, const float* B, float* X, const size_t pointDim, const size_t numPoints) {
 	// Want to solve the system given by: L(L^T)X = B where:
 	// 	L: pointDim x pointDim lower diagonal matrix
 	//	X: pointDim x numPoints unknown
@@ -90,14 +90,14 @@ void solvePositiveDefinite(const double* L, const double* B, double* X, const si
 	//
 	// Solve by first finding L Z = B, then L^T X = Z
 
-	double* Z = (double*)calloc(numPoints * pointDim, sizeof(double));
+	float* Z = (float*)calloc(numPoints * pointDim, sizeof(float));
 
 	// 2015-09-23 GEL play the access of L into L(F)orward and L(B)ackward. 
 	// Found that sequential access improved runtime. 2017-03-24 GEL basically
 	// pretend to carry out the forward and backward solvers, but to improve
 	// runtime, load in L in sequential order ahead of time, so second time
 	// around, we will have cached that data so the CPU will prefetch as needed.
-	double* LF = (double*)malloc(pointDim * pointDim * sizeof(double));
+	float* LF = (float*)malloc(pointDim * pointDim * sizeof(float));
 	for (size_t i = 0, lf = 0; i < pointDim; i++) {
 		if(i > 0) {
 			for (size_t j = 0; j <= i - 1; j++) {
@@ -108,7 +108,7 @@ void solvePositiveDefinite(const double* L, const double* B, double* X, const si
 		LF[lf++] = L[i * pointDim + i];
 	}
 
-	double* LB = (double*)malloc(pointDim * pointDim * sizeof(double));
+	float* LB = (float*)malloc(pointDim * pointDim * sizeof(float));
 	for(size_t i = 0, lb = 0; i < pointDim; ++i) {
 		size_t ip = pointDim - 1 - i;
 		for (size_t j = ip + 1; j < pointDim; j++) {
@@ -121,11 +121,11 @@ void solvePositiveDefinite(const double* L, const double* B, double* X, const si
 	// Use forward subsitution to solve lower triangular matrix system Lz = b.
 	// p. 150., Easy-to-Solve Systems, 4.2 LU and Cholesky Factorizations, Numerical Analysis by Kincaid, Cheney.
 	for (size_t point = 0; point < numPoints; ++point) {
-		const double* b = &(B[point * pointDim]);
-		double* z = &(Z[point * pointDim]);
+		const float* b = &(B[point * pointDim]);
+		float* z = &(Z[point * pointDim]);
 
 		for (size_t i = 0, lf = 0; i < pointDim; i++) {
-			double sum = 0.0;
+			float sum = 0.0;
 			if(i > 0) {
 				for (size_t j = 0; j <= i - 1; j++) {
 					sum += LF[lf++] * z[j];
@@ -139,13 +139,13 @@ void solvePositiveDefinite(const double* L, const double* B, double* X, const si
 	// use backward subsitution to solve L^T x = z
 	// p. 150., Easy-to-Solve Systems, 4.2 LU and Cholesky Factorizations, Numerical Analysis by Kincaid, Cheney.
 	for (size_t point = 0; point < numPoints; ++point) {
-		double* z = &(Z[point * pointDim]);
-		double* x = &(X[point * pointDim]);
+		float* z = &(Z[point * pointDim]);
+		float* x = &(X[point * pointDim]);
 
 		for (size_t i = 0, lb = 0; i < pointDim; i++) {
 			size_t ip = pointDim - 1 - i;
 
-			double sum = 0;
+			float sum = 0;
 			for (size_t j = ip + 1; j < pointDim; j++)
 				// Want A^T so switch switch i,j
 				sum += LB[lb++] * x[j];
@@ -160,9 +160,9 @@ void solvePositiveDefinite(const double* L, const double* B, double* X, const si
 }
 
 void lowerDiagByVector(
-	const double* L,
-	const double* x,
-	double* b,
+	const float* L,
+	const float* x,
+	float* b,
 	const size_t n
 ) {
 	assert(L != NULL);
@@ -180,9 +180,9 @@ void lowerDiagByVector(
 }
 
 void vectorAdd(
-	const double* a,
-	const double* b,
-	double* c,
+	const float* a,
+	const float* b,
+	float* c,
 	const size_t n
 ) {
 	assert(a != NULL);
@@ -195,7 +195,7 @@ void vectorAdd(
 	}
 }
 
-void vecAddInplace(double* a, const double* b, const size_t D) {
+void vecAddInplace(float* a, const float* b, const size_t D) {
 	assert(a != NULL);
 	assert(b != NULL);
 	assert(D > 0);
@@ -205,9 +205,9 @@ void vecAddInplace(double* a, const double* b, const size_t D) {
 	}
 }
 
-void vecDivByScalar(double* a, const double b, const size_t D) {
+void vecDivByScalar(float* a, const float b, const size_t D) {
 	assert(a != NULL);
-	assert(fabs(b) > DBL_EPSILON);
+	assert(fabsf(b) > DBL_EPSILON);
 	assert(D > 0);
 
 	for(size_t d = 0; d < D; ++d) {
@@ -215,16 +215,16 @@ void vecDivByScalar(double* a, const double b, const size_t D) {
 	}
 }
 
-double vecDiffNorm(const double* a, const double* b, const size_t D) {
+float vecDiffNorm(const float* a, const float* b, const size_t D) {
 	assert(a != NULL);
 	assert(b != NULL);
 	assert(D > 0);
 
-	double dist = 0;
+	float dist = 0;
 	for(size_t d = 0; d < D; ++d) {
-		double distD = a[d] - b[d];
+		float distD = a[d] - b[d];
 		distD *= distD;
 		dist += distD;
 	}
-	return sqrt(dist);
+	return sqrtf(dist);
 }

@@ -7,7 +7,7 @@
 #include "util.h"
 
 struct GMM* fit(
-	const double* X, 
+	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
 	const size_t numComponents,
@@ -21,22 +21,22 @@ struct GMM* fit(
 	
 	struct GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
-	const double tolerance = 1e-8;
+	const float tolerance = 1e-8;
 	size_t iteration = 0;
-	double prevLogL = -INFINITY;
-	double currentLogL = -INFINITY;
+	float prevLogL = -INFINITY;
+	float currentLogL = -INFINITY;
 
-	double* logpi = (double*)checkedCalloc(numComponents, sizeof(double));
-	double* loggamma = (double*)checkedCalloc(numPoints * numComponents, sizeof(double));
-	double* logGamma = (double*)checkedCalloc(numComponents, sizeof(double));
+	float* logpi = (float*)checkedCalloc(numComponents, sizeof(float));
+	float* loggamma = (float*)checkedCalloc(numPoints * numComponents, sizeof(float));
+	float* logGamma = (float*)checkedCalloc(numComponents, sizeof(float));
 
-	double* xm = (double*)checkedCalloc(pointDim, sizeof(double));
-	double* outerProduct = (double*)checkedCalloc(pointDim * pointDim, sizeof(double));
+	float* xm = (float*)checkedCalloc(pointDim, sizeof(float));
+	float* outerProduct = (float*)checkedCalloc(pointDim * pointDim, sizeof(float));
 
 	for(size_t k = 0; k < numComponents; ++k) {
-		const double pik = gmm->components[k].pi;
+		const float pik = gmm->components[k].pi;
 		assert(pik >= 0);
-		logpi[k] = log(pik);
+		logpi[k] = logf(pik);
 	}
 
 	do {
@@ -77,7 +77,7 @@ struct GMM* fit(
 			logGamma, numComponents
 		);
 	
-		double logGammaSum = calcLogGammaSum(logpi, numComponents, logGamma);
+		float logGammaSum = calcLogGammaSum(logpi, numComponents, logGamma);
 
 		// --- M-Step ---
 		performMStep(

@@ -10,7 +10,7 @@
 #include "cudaWrappers.h"
 
 struct GMM* cudaFit(
-	const double* X, 
+	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
 	const size_t numComponents,
@@ -23,19 +23,19 @@ struct GMM* cudaFit(
 	
 	struct GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
-	double* pi = (double*) malloc(numComponents * sizeof(double));
-	double* Mu = (double*) malloc(numComponents * pointDim * sizeof(double));
-	double* Sigma = (double*) malloc(numComponents * pointDim * pointDim * sizeof(double));	
-	double* SigmaL = (double*) malloc(numComponents * pointDim * pointDim * sizeof(double));
-	double* normalizers = (double*) malloc(numComponents * sizeof(double));
+	float* pi = (float*) malloc(numComponents * sizeof(float));
+	float* Mu = (float*) malloc(numComponents * pointDim * sizeof(float));
+	float* Sigma = (float*) malloc(numComponents * pointDim * pointDim * sizeof(float));	
+	float* SigmaL = (float*) malloc(numComponents * pointDim * pointDim * sizeof(float));
+	float* normalizers = (float*) malloc(numComponents * sizeof(float));
 
 	for(size_t k = 0; k < numComponents; ++k) {
 		struct Component* c = & gmm->components[k];
 
 		pi[k] = c->pi;
-		memcpy(&Mu[k * pointDim], c->mu, pointDim * sizeof(double));
-		memcpy(&Sigma[k * pointDim * pointDim], c->sigma, pointDim * pointDim * sizeof(double));
-		memcpy(&SigmaL[k * pointDim * pointDim], c->sigmaL, pointDim * pointDim * sizeof(double));
+		memcpy(&Mu[k * pointDim], c->mu, pointDim * sizeof(float));
+		memcpy(&Sigma[k * pointDim * pointDim], c->sigma, pointDim * pointDim * sizeof(float));
+		memcpy(&SigmaL[k * pointDim * pointDim], c->sigmaL, pointDim * pointDim * sizeof(float));
 		normalizers[k] = c->normalizer;
 	}
 
@@ -51,9 +51,9 @@ struct GMM* cudaFit(
 		struct Component* c = & gmm->components[k];
 
 		c->pi = pi[k];
-		memcpy(c->mu, &Mu[k * pointDim], pointDim * sizeof(double));
-		memcpy(c->sigma, &Sigma[k * pointDim * pointDim], pointDim * pointDim * sizeof(double));
-		memcpy(c->sigmaL, &SigmaL[k * pointDim * pointDim], pointDim * pointDim * sizeof(double));
+		memcpy(c->mu, &Mu[k * pointDim], pointDim * sizeof(float));
+		memcpy(c->sigma, &Sigma[k * pointDim * pointDim], pointDim * pointDim * sizeof(float));
+		memcpy(c->sigmaL, &SigmaL[k * pointDim * pointDim], pointDim * pointDim * sizeof(float));
 		c->normalizer = normalizers[k];
 	}
 

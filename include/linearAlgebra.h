@@ -4,45 +4,45 @@
 #include <stdlib.h>
 
 void choleskyDecomposition(
-	const double* A, const size_t pointDim, 
-	double* L
+	const float* A, const size_t pointDim, 
+	float* L
 );
 
 void solvePositiveDefinite(
-	const double* L, const double* B, 
-	double* X, 
+	const float* L, const float* B, 
+	float* X, 
 	const size_t pointDim, const size_t numPoints
 );
 
 void lowerDiagByVector(
-	const double* L,
-	const double* x,
-	double* b,
+	const float* L,
+	const float* x,
+	float* b,
 	const size_t n
 );
 
 void vectorAdd(
-	const double* a,
-	const double* b,
-	double* c,
+	const float* a,
+	const float* b,
+	float* c,
 	const size_t n
 ); 
 
 void vecAddInPlace(
-	double* a, 
-	const double* b, 
+	float* a, 
+	const float* b, 
 	const size_t D
 );
 
 void vecDivByScalar(
-	double* a, 
-	const double b, 
+	float* a, 
+	const float b, 
 	const size_t D
 );
 
-double vecDiffNorm(
-	const double* a, 
-	const double* b, 
+float vecDiffNorm(
+	const float* a, 
+	const float* b, 
 	const size_t D
 );
 

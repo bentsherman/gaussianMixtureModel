@@ -76,37 +76,37 @@ __host__ void dimToConsole(dim3* block, dim3* grid) {
 	printf("grid: (%d, %d, %d)\n", grid->x, grid->y, grid->z);
 }
 
-__host__ double* mallocOnGpu(const size_t N) {
-	double* device_A;
-	double ABytes = N * sizeof(double);
+__host__ float* mallocOnGpu(const size_t N) {
+	float* device_A;
+	float ABytes = N * sizeof(float);
 	check(cudaMalloc(&device_A, ABytes));
 	return device_A;
 }
 
-__host__ double* sendToGpu(const size_t N, const double* host) {
-	double* device;
-	const size_t hostBytes = N * sizeof(double);
+__host__ float* sendToGpu(const size_t N, const float* host) {
+	float* device;
+	const size_t hostBytes = N * sizeof(float);
 	check(cudaMalloc(&device, hostBytes));
 	check(cudaMemcpy(device, host, hostBytes, cudaMemcpyHostToDevice));
 	return device;
 }
 
-__host__ double* pinHostAndSendDevice(const size_t N, double* host) {
-	double* device;
-	const size_t hostBytes = N * sizeof(double);
+__host__ float* pinHostAndSendDevice(const size_t N, float* host) {
+	float* device;
+	const size_t hostBytes = N * sizeof(float);
 	check(cudaHostRegister(host, hostBytes, cudaHostRegisterDefault));
 	check(cudaMalloc(&device, hostBytes));
 	check(cudaMemcpy(device, host, hostBytes, cudaMemcpyHostToDevice));
 	return device;
 }
 
-__host__ void recvDeviceUnpinHost(double* device, double* host, const size_t N) {
-	check(cudaMemcpy(host, device, N * sizeof(double), cudaMemcpyDeviceToHost));
+__host__ void recvDeviceUnpinHost(float* device, float* host, const size_t N) {
+	check(cudaMemcpy(host, device, N * sizeof(float), cudaMemcpyDeviceToHost));
 	cudaFree(device);
 	cudaHostUnregister(host);
 }
 
-__host__ void unpinHost(double* device, double* host) {
+__host__ void unpinHost(float* device, float* host) {
 	cudaFree(device);
 	cudaHostUnregister(host);
 }

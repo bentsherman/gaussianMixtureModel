@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
 	srand(time(0));
 
-	double* X = generateGmmData(numPoints, pointDim, numComponents);
+	float* X = generateGmmData(numPoints, pointDim, numComponents);
 
 	for(size_t i = 0; i < numPoints; ++i) {
 		for(size_t j = 0; j < pointDim - 1; ++j) {

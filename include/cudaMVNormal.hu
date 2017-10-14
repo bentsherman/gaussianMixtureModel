@@ -3,32 +3,32 @@
 
 #include <stdlib.h>
 
-__device__ double devVecDot(const size_t N, const double* x, const double* y);
+__device__ float devVecDot(const size_t N, const float* x, const float* y);
 
-__device__ void devVecMinus(const size_t N, double* z, double* x, const double* y);
+__device__ void devVecMinus(const size_t N, float* z, float* x, const float* y);
 
-__device__ void devSolveLowerTri(const size_t N, const double* L, double* x, const double* b);
+__device__ void devSolveLowerTri(const size_t N, const float* L, float* x, const float* b);
 
-__device__ void devSolveLowerTriT(const size_t N, const double* L, double* x, const double* b);
+__device__ void devSolveLowerTriT(const size_t N, const float* L, float* x, const float* b);
 
-__device__ double devLogMVNormNormalizer(const size_t pointDim, const double* sigmaL);
+__device__ float devLogMVNormNormalizer(const size_t pointDim, const float* sigmaL);
 
-__device__ double devLogMVNormDist(
+__device__ float devLogMVNormDist(
 	const size_t pointDim,
-	const double* x, const double* mu, const double* sigmaL,
-	double* u, double* v
+	const float* x, const float* mu, const float* sigmaL,
+	float* u, float* v
 );
 
 __global__ void kernLogMVNormDist(
 	const size_t numPoints, const size_t pointDim, 
-	const double* X, double* mu, double* sigmaL,
-	double* logProb
+	const float* X, float* mu, float* sigmaL,
+	float* logProb
 );
 
 __global__ void kernGmmLogLikelihood(
 	const size_t numPoints, const size_t numComponents,
-	const double* logPi, const double* logP,
-	double* logL
+	const float* logPi, const float* logP,
+	float* logL
 );
 
 #endif

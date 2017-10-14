@@ -5,49 +5,49 @@
 
 __global__ void kernCalcLogLikelihoodAndGammaNK(
 	const size_t numPoints, const size_t numComponents,
-	const double* logpi, double* logPx, double* loggamma
+	const float* logpi, float* logPx, float* loggamma
 );
 
-__host__ double cudaGmmLogLikelihoodAndGammaNK(
+__host__ float cudaGmmLogLikelihoodAndGammaNK(
 	cudaDeviceProp* deviceProp,
 	const size_t numPoints, const size_t numComponents,
-	const double* logpi, double* logP,
-	const double* device_logpi, double* device_logP
+	const float* logpi, float* logP,
+	const float* device_logpi, float* device_logP
 );
 
-__global__ void kernExp(double* A, double* bias);
+__global__ void kernExp(float* A, float* bias);
 
-__global__ void kernBiasAndLog(double* sumexp, double* bias); 
+__global__ void kernBiasAndLog(float* sumexp, float* bias); 
 
 __host__ void cudaLogSumExp(
 	cudaDeviceProp* deviceProp, dim3 grid, dim3 block, 
 	const size_t numPoints,
-	double* device_src, double* device_dest, 
-	double* device_working, 
+	float* device_src, float* device_dest, 
+	float* device_working, 
 	cudaStream_t stream
 );
 
 __global__ void kernCalcMu(
 	const size_t numPoints, const size_t pointDim,
-	const double* X, const double* loggamma, const double* logGammaK,
-	double* dest
+	const float* X, const float* loggamma, const float* logGammaK,
+	float* dest
 );
 
 __global__ void kernCalcSigma(
 	const size_t numPoints, const size_t pointDim,
-	const double* X, const double* mu, const double* loggamma, const double* logGammaK,
-	double* dest
+	const float* X, const float* mu, const float* loggamma, const float* logGammaK,
+	float* dest
 );
 
 __global__ void kernPrepareCovariances(
 	const size_t numComponents, const size_t pointDim,
-	double* Sigma, double* SigmaL,
-	double* normalizers
+	float* Sigma, float* SigmaL,
+	float* normalizers
 );
 
 __global__ void kernUpdatePi(
 	const size_t numPoints, const size_t numComponents,
-	double* logpi, double* logGamma
+	float* logpi, float* logGamma
 );
 
 #endif

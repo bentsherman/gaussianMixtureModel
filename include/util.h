@@ -5,7 +5,7 @@
 
 #include <sys/time.h>
 
-double calcElapsedSec(struct timeval* start, struct timeval* stop);
+float calcElapsedSec(struct timeval* start, struct timeval* stop);
  
 void* checkedCalloc(const size_t count, const size_t size);
 

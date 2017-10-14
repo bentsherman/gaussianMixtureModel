@@ -7,12 +7,12 @@
 
 #include "util.h"
 
-double calcElapsedSec(struct timeval* start, struct timeval* stop) {
+float calcElapsedSec(struct timeval* start, struct timeval* stop) {
 	assert(start != NULL);
 	assert(stop != NULL);
 
-	double sec = stop->tv_sec - start->tv_sec;
-	double usec = stop->tv_usec - start->tv_usec;
+	float sec = stop->tv_sec - start->tv_sec;
+	float usec = stop->tv_usec - start->tv_usec;
 	if(stop->tv_sec > start->tv_sec) {
 		if(start->tv_usec > stop->tv_usec) {
 			sec = sec - 1;

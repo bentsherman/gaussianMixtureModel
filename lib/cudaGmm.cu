@@ -10,7 +10,7 @@
 
 __global__ void kernCalcLogLikelihoodAndGammaNK(
 	const size_t numPoints, const size_t numComponents,
-	const double* logpi, double* logPx, double* loggamma
+	const float* logpi, float* logPx, float* loggamma
 ) {
 	// loggamma[k * numPoints + i] = 
 	// On Entry: log p(x_i | mu_k, Sigma_k)
@@ -23,22 +23,22 @@ __global__ void kernCalcLogLikelihoodAndGammaNK(
 		return;
 	}
 
-	double maxArg = -INFINITY;
+	float maxArg = -INFINITY;
 	for(size_t k = 0; k < numComponents; ++k) {
-		const double logProbK = logpi[k] + loggamma[k * numPoints + i];
+		const float logProbK = logpi[k] + loggamma[k * numPoints + i];
 		if(logProbK > maxArg) {
 			maxArg = logProbK;
 		}
 	}
 
-	double sum = 0.0;
+	float sum = 0.0;
 	for (size_t k = 0; k < numComponents; ++k) {
-		const double logProbK = logpi[k] + loggamma[k * numPoints + i];
-		sum += exp(logProbK - maxArg);
+		const float logProbK = logpi[k] + loggamma[k * numPoints + i];
+		sum += expf(logProbK - maxArg);
 	}
 
 	assert(sum >= 0);
-	const double logpx = maxArg + log(sum);
+	const float logpx = maxArg + logf(sum);
 
 	for(size_t k = 0; k < numComponents; ++k) {
 		loggamma[k * numPoints + i] += -logpx;
@@ -47,11 +47,11 @@ __global__ void kernCalcLogLikelihoodAndGammaNK(
 	logPx[i] = logpx;
 }
 
-__host__ double cudaGmmLogLikelihoodAndGammaNK(
+__host__ float cudaGmmLogLikelihoodAndGammaNK(
 	cudaDeviceProp* deviceProp,
 	const size_t numPoints, const size_t numComponents,
-	const double* logpi, double* logP,
-	const double* device_logpi, double* device_logP
+	const float* logpi, float* logP,
+	const float* device_logpi, float* device_logP
 ) {
 	// logpi: 1 x numComponents
 	// logP: numComponents x numPoints
@@ -59,8 +59,8 @@ __host__ double cudaGmmLogLikelihoodAndGammaNK(
 	dim3 grid, block;
 	calcDim(numPoints, deviceProp, &block, &grid);
 
-	double logL = 0;
-	double* device_logPx = mallocOnGpu(numPoints);
+	float logL = 0;
+	float* device_logPx = mallocOnGpu(numPoints);
 
 	kernCalcLogLikelihoodAndGammaNK<<<grid, block>>>(
 		numPoints, numComponents,
@@ -73,38 +73,38 @@ __host__ double cudaGmmLogLikelihoodAndGammaNK(
 		device_logPx 
 	);
 
-	check(cudaMemcpy(&logL, device_logPx, sizeof(double), cudaMemcpyDeviceToHost));
+	check(cudaMemcpy(&logL, device_logPx, sizeof(float), cudaMemcpyDeviceToHost));
 
 	cudaFree(device_logPx);
 
 	// Copy back the full numPoints * numComponents values
 	check(cudaMemcpy(logP, device_logP, 
-		numPoints * numComponents * sizeof(double), cudaMemcpyDeviceToHost));
+		numPoints * numComponents * sizeof(float), cudaMemcpyDeviceToHost));
 
 	return logL;
 }
 
-__global__ void kernExp(double* A, double* bias) {
+__global__ void kernExp(float* A, float* bias) {
 	int b = blockIdx.y * gridDim.x + blockIdx.x;
 	int i = b * blockDim.x + threadIdx.x;
-	A[i] = exp(A[i] - *bias);
+	A[i] = expf(A[i] - *bias);
 }
 
-__global__ void kernBiasAndLog(double* sumexp, double* bias) {
-	*sumexp = *bias + log(*sumexp);
+__global__ void kernBiasAndLog(float* sumexp, float* bias) {
+	*sumexp = *bias + logf(*sumexp);
 }
 
 __host__ void cudaLogSumExp(
 	cudaDeviceProp* deviceProp, dim3 grid, dim3 block, 
 	const size_t numPoints,
-	double* device_src, double* device_dest, 
-	double* device_working, 
+	float* device_src, float* device_dest, 
+	float* device_working, 
 	cudaStream_t stream
 ) {
 	// dest <- src
 	check(cudaMemcpyAsync(
 		device_dest, device_src, 
-		numPoints * sizeof(double), 
+		numPoints * sizeof(float), 
 		cudaMemcpyDeviceToDevice,
 		stream
 	));
@@ -112,7 +112,7 @@ __host__ void cudaLogSumExp(
 	// working <- src
 	check(cudaMemcpyAsync(
 		device_working, device_src, 
-		numPoints * sizeof(double), 
+		numPoints * sizeof(float), 
 		cudaMemcpyDeviceToDevice,
 		stream
 	));
@@ -120,16 +120,16 @@ __host__ void cudaLogSumExp(
 	// working <- max { src }
 	cudaArrayMax(deviceProp, numPoints, device_working, stream);
 
-	// dest <- exp(src - max)
+	// dest <- expf(src - max)
 	kernExp<<<grid, block, 0, stream>>>(
 		device_dest,
 		device_working
 	);
 
-	// dest <- sum exp(src - max)
+	// dest <- sum expf(src - max)
 	cudaArraySum(deviceProp, numPoints, 1, device_dest, stream);
 
-	// dest <- max + log sum exp(src - max)
+	// dest <- max + log sum expf(src - max)
 	kernBiasAndLog<<<1, 1, 0, stream>>>(
 		device_dest, device_working
 	);
@@ -137,8 +137,8 @@ __host__ void cudaLogSumExp(
 
 __global__ void kernCalcMu(
 	const size_t numPoints, const size_t pointDim,
-	const double* X, const double* loggamma, const double* GammaK,
-	double* dest
+	const float* X, const float* loggamma, const float* GammaK,
+	float* dest
 ) {
 	// Assumes a 2D grid of 1024x1 1D blocks
 	int b = blockIdx.y * gridDim.x + blockIdx.x;
@@ -147,9 +147,9 @@ __global__ void kernCalcMu(
 		return;
 	}
 
-	const double a = exp(loggamma[i]) / exp(*GammaK);
-	const double* x = & X[i * pointDim];
-	double* y = & dest[i * pointDim]; 
+	const float a = expf(loggamma[i]) / expf(*GammaK);
+	const float* x = & X[i * pointDim];
+	float* y = & dest[i * pointDim]; 
 
 	for(size_t i = 0; i < pointDim; ++i) {
 		y[i] = a * x[i];
@@ -158,8 +158,8 @@ __global__ void kernCalcMu(
 
 __global__ void kernCalcSigma(
 	const size_t numPoints, const size_t pointDim,
-	const double* X, const double* mu, const double* loggamma, const double* GammaK,
-	double* dest
+	const float* X, const float* mu, const float* loggamma, const float* GammaK,
+	float* dest
 ) {
 	assert(pointDim < 1024);
 	
@@ -172,17 +172,17 @@ __global__ void kernCalcSigma(
 
 	// gamma_{n,k} / Gamma_{k} (x - mu) (x - mu)^T
 
-	const double a = exp(loggamma[i]) / exp(*GammaK);
-	const double* x = & X[i * pointDim];
-	double* y = & dest[i * pointDim * pointDim]; 
+	const float a = expf(loggamma[i]) / expf(*GammaK);
+	const float* x = & X[i * pointDim];
+	float* y = & dest[i * pointDim * pointDim]; 
 
-	double u[1024];
+	float u[1024];
 	for(size_t i = 0; i < pointDim; ++i) {
 		u[i] = x[i] - mu[i];
 	}
 
 	for(size_t i = 0; i < pointDim; ++i) {
-		double* yp = &y[i * pointDim];
+		float* yp = &y[i * pointDim];
 		for(size_t j = 0; j < pointDim; ++j) {
 			yp[j] = a * u[i] * u[j];
 		}
@@ -191,7 +191,7 @@ __global__ void kernCalcSigma(
 
 __global__ void kernUpdatePi(
 	const size_t numPoints, const size_t numComponents,
-	double* logpi, double* Gamma
+	float* logpi, float* Gamma
 ) {
 	int b = blockIdx.y * gridDim.x + blockIdx.x;
 	int comp = b * blockDim.x + threadIdx.x;
@@ -199,22 +199,22 @@ __global__ void kernUpdatePi(
 		return;
 	}
 
-	__shared__ double A[1024];
-	A[comp] = logpi[comp] + log(Gamma[comp * numPoints]);
+	__shared__ float A[1024];
+	A[comp] = logpi[comp] + logf(Gamma[comp * numPoints]);
 	__syncthreads();
 
-	double sum = 0;
+	float sum = 0;
 	for(size_t k = 0; k < numComponents; ++k) {
-		sum += exp(A[k]);
+		sum += expf(A[k]);
 	}
 
-	logpi[comp] = A[comp] - log(sum);
+	logpi[comp] = A[comp] - logf(sum);
 }
 
 __global__ void kernPrepareCovariances(
 	const size_t numComponents, const size_t pointDim,
-	double* Sigma, double* SigmaL,
-	double* normalizers
+	float* Sigma, float* SigmaL,
+	float* normalizers
 ) {
 	// Parallel in the number of components
 
@@ -231,17 +231,17 @@ __global__ void kernPrepareCovariances(
 
 	// L is the resulting lower diagonal portion of A = LL^T
 	const size_t ALen = pointDim * pointDim;
-	double* A = & Sigma[comp * ALen];
-	double* L = & SigmaL[comp * ALen];
+	float* A = & Sigma[comp * ALen];
+	float* L = & SigmaL[comp * ALen];
 	for(size_t i = 0; i < ALen; ++i) { 
 		L[i] = 0;
 	}
 
 	for (size_t k = 0; k < pointDim; ++k) {
-		double sum = 0;
+		float sum = 0;
 		for (int s = 0; s < k; ++s) {
-			const double l = L[k * pointDim + s];
-			const double ll = l * l;
+			const float l = L[k * pointDim + s];
+			const float ll = l * l;
 			sum += ll;
 		}
 
@@ -254,9 +254,9 @@ __global__ void kernPrepareCovariances(
 			break;
 		}
 
-		L[k * pointDim + k] = sqrt(sum);
+		L[k * pointDim + k] = sqrtf(sum);
 		for (int i = k + 1; i < pointDim; ++i) {
-			double subsum = 0;
+			float subsum = 0;
 			for (int s = 0; s < k; ++s)
 				subsum += L[i * pointDim + s] * L[k * pointDim + s];
 
@@ -264,14 +264,14 @@ __global__ void kernPrepareCovariances(
 		}
 	}
 
-	double logDet = 1.0;
+	float logDet = 1.0;
 	for (size_t i = 0; i < pointDim; ++i) {
-		double diag = L[i * pointDim + i];
+		float diag = L[i * pointDim + i];
 		assert(diag > 0);
-		logDet += log(diag);
+		logDet += logf(diag);
 	}
 
 	logDet *= 2.0;
 
-	normalizers[comp] = - 0.5 * (pointDim * log(2.0 * M_PI) + logDet);
+	normalizers[comp] = - 0.5 * (pointDim * logf(2.0 * M_PI) + logDet);
 }

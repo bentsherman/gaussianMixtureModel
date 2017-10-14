@@ -13,28 +13,28 @@
 #include "gmm.h"
 #include "cudaWrappers.h"
 
-typedef double (*GmmLogLikelihoodWrapper)(const size_t, const size_t, const double*, double*);
+typedef float (*GmmLogLikelihoodWrapper)(const size_t, const size_t, const float*, float*);
 
 void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 	const size_t numPoints = 1024 + 512;
 	const size_t numComponents = 2;
 	const size_t pointDim = 1;
 
-	const double sigma = 1;
-	const double det = 1;
-	const double logNormalizer = -0.5 * pointDim * log(2.0 * M_PI) - 0.5 * log(det);
+	const float sigma = 1;
+	const float det = 1;
+	const float logNormalizer = -0.5 * pointDim * logf(2.0 * M_PI) - 0.5 * logf(det);
 
-	const double logPi[] = { log(0.25), log(0.75) };
-	const double mu[] = { -1.5, 1.5 };
+	const float logPi[] = { logf(0.25), logf(0.75) };
+	const float mu[] = { -1.5, 1.5 };
 
-	double X[numPoints];
-	memset(X, 0, numPoints * sizeof(double));
+	float X[numPoints];
+	memset(X, 0, numPoints * sizeof(float));
 	for(size_t i = 0; i < numPoints; ++i) {
-		X[i] = 3.0 * ( ( (double)i - (double)numPoints/2 ) / (double)(numPoints/2.0) );
+		X[i] = 3.0 * ( ( (float)i - (float)numPoints/2 ) / (float)(numPoints/2.0) );
 	}
 
-	double logP[numComponents * numPoints];
-	memset(logP, 0, numComponents * numPoints * sizeof(double));
+	float logP[numComponents * numPoints];
+	memset(logP, 0, numComponents * numPoints * sizeof(float));
 
 	struct Component phi;
 	phi.sigmaL = &sigma;
@@ -44,7 +44,7 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 		logMvNormDist(&phi, 1, X, numPoints, & logP[k * numPoints]);
 	}
 
-	double actualLogL = target(numPoints, numComponents, logPi, logP);
+	float actualLogL = target(numPoints, numComponents, logPi, logP);
 
 	// Verify the logL portion
 	{
@@ -52,17 +52,17 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 		assert(actualLogL != INFINITY);
 		assert(actualLogL == actualLogL);
 
-		double expectedLogL = 0;
+		float expectedLogL = 0;
 		for(size_t i = 0; i < numPoints; ++i) {
-			double sum = 0;
+			float sum = 0;
 			for(size_t k = 0; k < numComponents; ++k) {
-				sum += exp(logPi[k] + logNormalizer - 0.5 * pow( X[i] - mu[k], 2.0 )); 
+				sum += expf(logPi[k] + logNormalizer - 0.5 * powf( X[i] - mu[k], 2.0 )); 
 			}
 
-			expectedLogL += log(sum);
+			expectedLogL += logf(sum);
 		}
 
-		double absDiff = fabs(expectedLogL - actualLogL);
+		float absDiff = fabsf(expectedLogL - actualLogL);
 		if(absDiff >= DBL_EPSILON) {
 			printf("log L = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
 				actualLogL, expectedLogL, absDiff);
@@ -74,17 +74,17 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 	// Verify the gammaNK portion
 	{
 		for(size_t i = 0; i < numPoints; ++i) { 
-			double sum = 0;
+			float sum = 0;
 			for(size_t k = 0; k < numComponents; ++k) {
-				sum += exp(logPi[k] + logNormalizer - 0.5 * pow( X[i] - mu[k], 2.0 )); 
+				sum += expf(logPi[k] + logNormalizer - 0.5 * powf( X[i] - mu[k], 2.0 )); 
 			}
-			double logPx = log(sum);
+			float logPx = logf(sum);
 
 			for(size_t k = 0; k < numComponents; ++k) {
-				double expectedGammaNK = logNormalizer - 0.5 * pow(X[i] - mu[k], 2.0) - logPx;
-				double actualGammaNK = logP[k * numPoints + i];
+				float expectedGammaNK = logNormalizer - 0.5 * powf(X[i] - mu[k], 2.0) - logPx;
+				float actualGammaNK = logP[k * numPoints + i];
 
-				double absDiff = fabs(expectedGammaNK - actualGammaNK);
+				float absDiff = fabsf(expectedGammaNK - actualGammaNK);
 				if(absDiff >= 10.0 * DBL_EPSILON) {
 					printf("gamma_{n = %zu, k = %zu} = %.16f, but should equal = %.16f; absDiff = %.16f, epsilon = %.16f\n", 
 						i, k, actualGammaNK, expectedGammaNK, absDiff, 10.0 * DBL_EPSILON);
@@ -96,18 +96,18 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 	}
 }
 
-double cpuGmmLogLikelihoodWrapper(
+float cpuGmmLogLikelihoodWrapper(
 	const size_t numPoints, const size_t numComponents,
-	const double* logPi, double* logP
+	const float* logPi, float* logP
 ) {
-	double logL = 0;
+	float logL = 0;
 	logLikelihoodAndGammaNK(logPi, numComponents, logP, numPoints, 0, numPoints, &logL);
 	return logL;
 }
 
-double gpuGmmLogLikelihoodWrapper(
+float gpuGmmLogLikelihoodWrapper(
 	const size_t numPoints, const size_t numComponents,
-	const double* logPi, double* logP
+	const float* logPi, float* logP
 ) {
 	// does both loglikelihood and gamma nk
 	return gpuGmmLogLikelihood(numPoints, numComponents, logPi, logP);

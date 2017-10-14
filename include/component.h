@@ -5,15 +5,15 @@
 
 struct Component {
 	// Parameters, weight, mean, covariance
-	double pi;
-	double* mu;
-	double* sigma;
+	float pi;
+	float* mu;
+	float* sigma;
 
 	// Lower triangular covariance matrix
-	double* sigmaL;
+	float* sigmaL;
 
 	// Probability density normalizer
-	double normalizer;
+	float normalizer;
 };
 
 void printToConsole(
@@ -28,17 +28,17 @@ void prepareCovariance(
 
 void logMvNormDist(
 	const struct Component* component, const size_t pointDim, 
-	const double* X, const size_t numPoints, 
-	double* logProb
+	const float* X, const size_t numPoints, 
+	float* logProb
 ); 
 
-double sampleStandardNormal();
+float sampleStandardNormal();
 
-double* sampleWishart(
+float* sampleWishart(
 	const size_t dimension, const size_t degreeFreedom
 );
 
-double* sampleWishartCholesky(
+float* sampleWishartCholesky(
 	const size_t dimension, const size_t degreeFreedom
 );
 

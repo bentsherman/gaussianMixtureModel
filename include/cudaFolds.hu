@@ -7,22 +7,22 @@
  * Methods to support vector array summation.
  *
  */
-__device__ void devVecAdd(size_t pointDim, double* dest, double* src);
+__device__ void devVecAdd(size_t pointDim, float* dest, float* src);
 
-__global__ void kernElementWiseSum(const size_t numPoints, const size_t pointDim, double* dest, double* src);
+__global__ void kernElementWiseSum(const size_t numPoints, const size_t pointDim, float* dest, float* src);
 
-__global__ void kernBlockWiseSum(const size_t numPoints, const size_t pointDim, double* dest);
+__global__ void kernBlockWiseSum(const size_t numPoints, const size_t pointDim, float* dest);
 
-__host__ void cudaArraySum(cudaDeviceProp* deviceProp, size_t numPoints, const size_t pointDim, double* device_A, cudaStream_t stream = 0);
+__host__ void cudaArraySum(cudaDeviceProp* deviceProp, size_t numPoints, const size_t pointDim, float* device_A, cudaStream_t stream = 0);
 
 /*
  * Methods to support scalar array maximum.
  *
  */
-__global__ void kernElementWiseMax(const size_t numPoints, double* dest, double* src);
+__global__ void kernElementWiseMax(const size_t numPoints, float* dest, float* src);
 
-__global__ void kernBlockWiseMax(const size_t numPoints, double* dest);
+__global__ void kernBlockWiseMax(const size_t numPoints, float* dest);
 
-__host__ void cudaArrayMax(cudaDeviceProp* deviceProp, size_t numPoints, double* device_A, cudaStream_t stream = 0);
+__host__ void cudaArrayMax(cudaDeviceProp* deviceProp, size_t numPoints, float* device_A, cudaStream_t stream = 0);
 
 #endif

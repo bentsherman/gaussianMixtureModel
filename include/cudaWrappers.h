@@ -6,47 +6,47 @@
 struct GmmEmGpuCtx;
 
 extern void gpuGmmFit(
-	const double* X,
+	const float* X,
 	const size_t numPoints, 
 	const size_t pointDim, 
 	const size_t numComponents,
-	double* pi,
-	double* Mu,
-	double* Sigma,
-	double* SigmaL,
-	double* normalizers,
+	float* pi,
+	float* Mu,
+	float* Sigma,
+	float* SigmaL,
+	float* normalizers,
 	const size_t maxIterations
 );
 
 // Wrappers for unit testing
 extern void gpuSum(
 	size_t numPoints, size_t pointDim, 
-	double* host_a, double* host_sum
+	float* host_a, float* host_sum
 );
 
-extern double gpuMax(
-	const size_t N, double* a
+extern float gpuMax(
+	const size_t N, float* a
 );
 
 extern void gpuLogMVNormDist(
 	const size_t numPoints, const size_t pointDim,
-	const double* X, const double* mu, const double* sigmaL, const double logNormalizer,
-	double* logP
+	const float* X, const float* mu, const float* sigmaL, const float logNormalizer,
+	float* logP
 );
 
-extern double gpuGmmLogLikelihood(
+extern float gpuGmmLogLikelihood(
 	const size_t numPoints, const size_t numComponents,
-	const double* logPi, double* logP
+	const float* logPi, float* logP
 );
 
 extern void gpuCalcLogGammaNK(
 	const size_t numPoints, const size_t numComponents,
-	const double* logpi, double* loggamma
+	const float* logpi, float* loggamma
 );
 
 extern void gpuCalcLogGammaK(
 	const size_t numPoints, const size_t numComponents,
-	const double* loggamma, double* logGamma
+	const float* loggamma, float* logGamma
 );
 
 #endif

@@ -112,7 +112,7 @@ int isValidDatFile(
 	return 1;
 }
 
-double* parseDatFile(const char* filePath, size_t* outNumPoints, size_t* outPointDim) {
+float* parseDatFile(const char* filePath, size_t* outNumPoints, size_t* outPointDim) {
 	assert(filePath != NULL);
 	assert(outNumPoints != NULL);
 	assert(outPointDim != NULL);
@@ -129,7 +129,7 @@ double* parseDatFile(const char* filePath, size_t* outNumPoints, size_t* outPoin
 		return NULL;
 	}
 
-	double* data = (double*)checkedCalloc(*outNumPoints * *outPointDim, sizeof(double));
+	float* data = (float*)checkedCalloc(*outNumPoints * *outPointDim, sizeof(float));
 
 	size_t currentPoint = 0;
 	for(size_t i = 0, j = 0; i < contentsLength; ++i) {
@@ -146,7 +146,7 @@ double* parseDatFile(const char* filePath, size_t* outNumPoints, size_t* outPoin
 				errno = 0;
 				data[currentPoint] = strtod(&contents[j], NULL);
 				if(errno != 0) {
-					perror("String to double error.");
+					perror("String to float error.");
 					free(data);
 					free(contents);
 					return NULL;

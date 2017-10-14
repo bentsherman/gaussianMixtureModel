@@ -11,7 +11,7 @@
 #include "util.h"
 
 struct GMM* initGMM(
-	const double* X, 
+	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
 	const size_t numComponents
@@ -29,7 +29,7 @@ struct GMM* initGMM(
 	gmm->components = (struct Component*) checkedCalloc(numComponents, sizeof(struct Component));
 
 	// Seed with kmeans (seeding with random points can lead to degeneracy)
-	double M[pointDim * numComponents];
+	float M[pointDim * numComponents];
 	for(size_t k = 0; k < numComponents; ++k) {
 		// Use a random point for mean of each component
 		size_t j = rand() % numPoints;
@@ -40,23 +40,23 @@ struct GMM* initGMM(
 
 	kmeans(X, numPoints, pointDim, M, numComponents);
 
-	double uniformTau = 1.0 / numComponents;
+	float uniformTau = 1.0 / numComponents;
 	for(size_t k = 0; k < gmm->numComponents; ++k) {
 		struct Component* component = & gmm->components[k];
 
 		// Assume every component has uniform weight
 		component->pi = uniformTau;
 
-		component->mu = (double*)checkedCalloc(pointDim, sizeof(double));
-		memcpy(component->mu, &M[k * pointDim], pointDim * sizeof(double));
+		component->mu = (float*)checkedCalloc(pointDim, sizeof(float));
+		memcpy(component->mu, &M[k * pointDim], pointDim * sizeof(float));
 
 		// Use identity covariance- assume dimensions are independent
-		component->sigma = (double*)checkedCalloc(pointDim * pointDim, sizeof(double));
+		component->sigma = (float*)checkedCalloc(pointDim * pointDim, sizeof(float));
 		for (size_t dim = 0; dim < pointDim; ++dim)
 			component->sigma[dim * pointDim + dim] = 1;
 		
 		// Initialize zero artifacts
-		component->sigmaL = (double*)checkedCalloc(pointDim * pointDim, sizeof(double));
+		component->sigmaL = (float*)checkedCalloc(pointDim * pointDim, sizeof(float));
 		component->normalizer = 0;
 	
 		prepareCovariance(component, pointDim);
@@ -83,8 +83,8 @@ void freeGMM(struct GMM* gmm) {
 void calcLogMvNorm(
 	const struct Component* components, const size_t numComponents,
 	const size_t componentStart, const size_t componentEnd,
-	const double* X, const size_t numPoints, const size_t pointDim,
-	double* logProb
+	const float* X, const size_t numPoints, const size_t pointDim,
+	float* logProb
 ) {
 	assert(components != NULL);
 	assert(numComponents > 0);
@@ -105,10 +105,10 @@ void calcLogMvNorm(
 }
 
 void logLikelihood(
-	const double* logpi, const size_t numComponents,
-	const double* logProb, const size_t numPoints,
+	const float* logpi, const size_t numComponents,
+	const float* logProb, const size_t numPoints,
 	const size_t pointStart, const size_t pointEnd,
-	double* logL
+	float* logL
 ) { 
 	assert(logpi != NULL);
 	assert(numComponents > 0);
@@ -120,28 +120,28 @@ void logLikelihood(
 
 	*logL = 0.0;
 	for (size_t point = pointStart; point < pointEnd; ++point) {
-		double maxArg = -INFINITY;
+		float maxArg = -INFINITY;
 		for(size_t k = 0; k < numComponents; ++k) {
-			const double logProbK = logpi[k] + logProb[k * numPoints + point];
+			const float logProbK = logpi[k] + logProb[k * numPoints + point];
 			if(logProbK > maxArg) {
 				maxArg = logProbK;
 			}
 		}
 
-		double sum = 0.0;
+		float sum = 0.0;
 		for (size_t k = 0; k < numComponents; ++k) {
-			const double logProbK = logpi[k] + logProb[k * numPoints + point];
-			sum += exp(logProbK - maxArg);
+			const float logProbK = logpi[k] + logProb[k * numPoints + point];
+			sum += expf(logProbK - maxArg);
 		}
 
 		assert(sum >= 0);
-		*logL += maxArg + log(sum);
+		*logL += maxArg + logf(sum);
 	}
 }
 
 int shouldContinue(
-	const double prevLogL, const double currentLogL,
-	const double tolerance
+	const float prevLogL, const float currentLogL,
+	const float tolerance
 ) {
 	// In principle this shouldn't happen, but if it does going to assume we're in
 	// an odd state and that we should terminate.
@@ -149,7 +149,7 @@ int shouldContinue(
 		return 0;
 	}
 
-	if(fabs(currentLogL - prevLogL) < tolerance ) {
+	if(fabsf(currentLogL - prevLogL) < tolerance ) {
 		return 0;
 	}
 
@@ -157,9 +157,9 @@ int shouldContinue(
 }
 
 void calcLogGammaNK(
-	const double* logpi, const size_t numComponents,
+	const float* logpi, const size_t numComponents,
 	const size_t pointStart, const size_t pointEnd,
-	double* loggamma, const size_t numPoints
+	float* loggamma, const size_t numPoints
 ) {
 	assert(logpi != NULL);
 	assert(numComponents > 0);
@@ -171,23 +171,23 @@ void calcLogGammaNK(
 	assert(loggamma != NULL);
 
 	for (size_t point = pointStart; point < pointEnd; ++point) {
-		double maxArg = -INFINITY;
+		float maxArg = -INFINITY;
 		for (size_t k = 0; k < numComponents; ++k) {
-			const double arg = logpi[k] + loggamma[k * numPoints + point];
+			const float arg = logpi[k] + loggamma[k * numPoints + point];
 			if(arg > maxArg) {
 				maxArg = arg;
 			}
 		}
 
 		// compute log p(x)
-		double sum = 0;
+		float sum = 0;
 		for(size_t k = 0; k < numComponents; ++k) {
-			const double arg = logpi[k] + loggamma[k * numPoints + point];
-			sum += exp(arg - maxArg);
+			const float arg = logpi[k] + loggamma[k * numPoints + point];
+			sum += expf(arg - maxArg);
 		}
 		assert(sum >= 0);
 
-		const double logpx = maxArg + log(sum);
+		const float logpx = maxArg + logf(sum);
 		for(size_t k = 0; k < numComponents; ++k) {
 			loggamma[k * numPoints + point] += -logpx;
 		}
@@ -195,10 +195,10 @@ void calcLogGammaNK(
 }
 
 void logLikelihoodAndGammaNK(
-	const double* logpi, const size_t numComponents,
-	double* logProb, const size_t numPoints,
+	const float* logpi, const size_t numComponents,
+	float* logProb, const size_t numPoints,
 	const size_t pointStart, const size_t pointEnd,
-	double* logL
+	float* logL
 ) {
 	assert(logpi != NULL);
 	assert(numComponents > 0);
@@ -210,22 +210,22 @@ void logLikelihoodAndGammaNK(
 
 	*logL = 0.0;
 	for (size_t point = pointStart; point < pointEnd; ++point) {
-		double maxArg = -INFINITY;
+		float maxArg = -INFINITY;
 		for(size_t k = 0; k < numComponents; ++k) {
-			const double logProbK = logpi[k] + logProb[k * numPoints + point];
+			const float logProbK = logpi[k] + logProb[k * numPoints + point];
 			if(logProbK > maxArg) {
 				maxArg = logProbK;
 			}
 		}
 
-		double sum = 0.0;
+		float sum = 0.0;
 		for (size_t k = 0; k < numComponents; ++k) {
-			const double logProbK = logpi[k] + logProb[k * numPoints + point];
-			sum += exp(logProbK - maxArg);
+			const float logProbK = logpi[k] + logProb[k * numPoints + point];
+			sum += expf(logProbK - maxArg);
 		}
 
 		assert(sum >= 0);
-		const double logpx = maxArg + log(sum);
+		const float logpx = maxArg + logf(sum);
 		*logL += logpx;
 		for(size_t k = 0; k < numComponents; ++k) {
 			logProb[k * numPoints + point] += -logpx;
@@ -234,9 +234,9 @@ void logLikelihoodAndGammaNK(
 }
 
 void calcLogGammaK(
-	const double* loggamma, const size_t numPoints,
+	const float* loggamma, const size_t numPoints,
 	const size_t componentStart, const size_t componentEnd,
-	double* logGamma, const size_t numComponents
+	float* logGamma, const size_t numComponents
 ) {
 	assert(loggamma != NULL);
 	assert(numPoints > 0);
@@ -247,58 +247,58 @@ void calcLogGammaK(
 
 	assert(logGamma != NULL);
 
-	memset(&logGamma[componentStart], 0, (componentEnd - componentStart) * sizeof(double));
+	memset(&logGamma[componentStart], 0, (componentEnd - componentStart) * sizeof(float));
 	for(size_t k = componentStart; k < componentEnd; ++k) {
-		const double* loggammak = & loggamma[k * numPoints];
+		const float* loggammak = & loggamma[k * numPoints];
 
-		double maxArg = -INFINITY;
+		float maxArg = -INFINITY;
 		for(size_t point = 0; point < numPoints; ++point) {
-			const double loggammank = loggammak[point];
+			const float loggammank = loggammak[point];
 			if(loggammank > maxArg) {
 				maxArg = loggammank;
 			}
 		}
 
-		double sum = 0;
+		float sum = 0;
 		for(size_t point = 0; point < numPoints; ++point) {
-			const double loggammank = loggammak[point];
-			sum += exp(loggammank - maxArg);
+			const float loggammank = loggammak[point];
+			sum += expf(loggammank - maxArg);
 		}
 		assert(sum >= 0);
 
-		logGamma[k] = maxArg + log(sum);
+		logGamma[k] = maxArg + logf(sum);
 	}
 }
 
 
-double calcLogGammaSum(
-	const double* logpi, const size_t numComponents,
-	const double* logGamma
+float calcLogGammaSum(
+	const float* logpi, const size_t numComponents,
+	const float* logGamma
 ) {
-	double maxArg = -INFINITY;
+	float maxArg = -INFINITY;
 	for(size_t k = 0; k < numComponents; ++k) {
-		const double arg = logpi[k] + logGamma[k];
+		const float arg = logpi[k] + logGamma[k];
 		if(arg > maxArg) {
 			maxArg = arg;
 		}
 	}
 
-	double sum = 0;
+	float sum = 0;
 	for (size_t k = 0; k < numComponents; ++k) {
-		const double arg = logpi[k] + logGamma[k];
-		sum += exp(arg - maxArg);
+		const float arg = logpi[k] + logGamma[k];
+		sum += expf(arg - maxArg);
 	}
 	assert(sum >= 0);
 
-	return maxArg + log(sum);
+	return maxArg + logf(sum);
 }
 
 void performMStep(
 	struct Component* components, const size_t numComponents,
 	const size_t componentStart, const size_t componentEnd,
-	double* logpi, double* loggamma, double* logGamma, const double logGammaSum,
-	const double* X, const size_t numPoints, const size_t pointDim,
-	double* outerProduct, double* xm
+	float* logpi, float* loggamma, float* logGamma, const float logGammaSum,
+	const float* X, const size_t numPoints, const size_t pointDim,
+	float* outerProduct, float* xm
 ) {
 	assert(components != NULL);
 	assert(numComponents > 0);
@@ -318,28 +318,28 @@ void performMStep(
 	for(size_t k = componentStart; k < componentEnd; ++k) {
 		struct Component* component = & components[k];
 		logpi[k] += logGamma[k] - logGammaSum;
-		component->pi = exp(logpi[k]);
+		component->pi = expf(logpi[k]);
 		assert(0 <= component->pi && component->pi <= 1);
 	}
 
 	// Convert loggamma and logGamma over to gamma and logGamma to avoid duplicate,
-	//  and costly, exp(x) calls.
+	//  and costly, expf(x) calls.
 	for(size_t k = componentStart; k < componentEnd; ++k) {
 		for(size_t n = 0; n < numPoints; ++n) {
 			const size_t i = k * numPoints + n;
-			loggamma[i] = exp(loggamma[i]);
+			loggamma[i] = expf(loggamma[i]);
 		}
 	}
 
 	for(size_t k = componentStart; k < componentEnd; ++k) {
-		logGamma[k] = exp(logGamma[k]);
+		logGamma[k] = expf(logGamma[k]);
 	}
 
 	// Update mu
 	for(size_t k = componentStart; k < componentEnd; ++k) {
 		struct Component* component = & components[k];
 
-		memset(component->mu, 0, pointDim * sizeof(double));
+		memset(component->mu, 0, pointDim * sizeof(float));
 		for (size_t point = 0; point < numPoints; ++point) {
 			for (size_t dim = 0; dim < pointDim; ++dim) {
 				component->mu[dim] += loggamma[k * numPoints + point] * X[point * pointDim + dim];
@@ -354,7 +354,7 @@ void performMStep(
 	// Update sigma
 	for(size_t k = componentStart; k < componentEnd; ++k) {
 		struct Component* component = & components[k];
-		memset(component->sigma, 0, pointDim * pointDim * sizeof(double));
+		memset(component->sigma, 0, pointDim * pointDim * sizeof(float));
 		for (size_t point = 0; point < numPoints; ++point) {
 			// (x - m)
 			for (size_t dim = 0; dim < pointDim; ++dim) {
@@ -381,21 +381,21 @@ void performMStep(
 	}
 }
 
-double* generateGmmData(
+float* generateGmmData(
 	const size_t numPoints, const size_t pointDim, const size_t numComponents
 ) {
-	double* X = (double*)checkedCalloc(numPoints * pointDim, sizeof(double));
+	float* X = (float*)checkedCalloc(numPoints * pointDim, sizeof(float));
 
 	// Select mixture coefficients (could sample this from Dirichlet, but this is 
 	// computationally more efficient.)
-	double pi[numComponents];
-	double piSum = 0;
+	float pi[numComponents];
+	float piSum = 0;
 
-	double limit = 2.0 * numComponents / (double) numPoints;
+	float limit = 2.0 * numComponents / (float) numPoints;
 
 	for(size_t i = 0; i < numComponents; ++i) {
 		do {
-			pi[i] = rand() / (double) RAND_MAX;
+			pi[i] = rand() / (float) RAND_MAX;
 		} while (pi[i] < limit);
 		piSum += pi[i];
 	}
@@ -409,8 +409,8 @@ double* generateGmmData(
 		pointsPerComponent[i] = (size_t)round(pi[i]*numPoints);
 	}
 
-	double covLx[pointDim];
-	double mean[pointDim];
+	float covLx[pointDim];
+	float mean[pointDim];
 
 	size_t xi = 0;
 	for(size_t k = 0; k < numComponents && xi < numPoints; ++k) {
@@ -421,11 +421,11 @@ double* generateGmmData(
 
 		// Select component covariance (dof is just a heuristic)
 		const size_t dof = pointDim + 1 + numComponents;
-		double* covL = sampleWishartCholesky(pointDim, dof);
+		float* covL = sampleWishartCholesky(pointDim, dof);
 
 		// Sample points from component proportional to component mixture coefficient
 		for(size_t i = 0; i < pointsPerComponent[k] && xi < numPoints; ++i) {
-			double* x = & X[xi * pointDim];
+			float* x = & X[xi * pointDim];
 			for(size_t d = 0; d < pointDim; ++d) {
 				x[d] = sampleStandardNormal();
 			}
@@ -442,7 +442,7 @@ double* generateGmmData(
 	for(size_t i = numPoints - 1; i > 0; --i) {
 		size_t j = rand() % i;
 		for(size_t d = 0; d < pointDim; ++d) {
-			double t = X[i * pointDim + d];
+			float t = X[i * pointDim + d];
 			X[i * pointDim + d] = X[j * pointDim + d];
 			X[j * pointDim + d] = t;
 		}

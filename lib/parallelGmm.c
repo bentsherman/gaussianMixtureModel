@@ -44,16 +44,16 @@ void* parallelFitStart(void* untypedArgs) {
 
 	const size_t numComponents = sargs->gmm->numComponents;
 
-	const double* X = sargs->X;
+	const float* X = sargs->X;
 	const size_t numPoints = sargs->numPoints;
 	const size_t pointDim = sargs->pointDim;
 
-	double* logpi = sargs->logpi;
-	double* loggamma = sargs->loggamma;
-	double* logGamma = sargs->logGamma;
+	float* logpi = sargs->logpi;
+	float* loggamma = sargs->loggamma;
+	float* logGamma = sargs->logGamma;
 
-	double* xm = (double*)checkedCalloc(pointDim, sizeof(double));
-	double* outerProduct = (double*)checkedCalloc(pointDim * pointDim, sizeof(double));
+	float* xm = (float*)checkedCalloc(pointDim, sizeof(float));
+	float* outerProduct = (float*)checkedCalloc(pointDim * pointDim, sizeof(float));
 
 	size_t iteration = 0;
 
@@ -113,7 +113,7 @@ void* parallelFitStart(void* untypedArgs) {
 }
 
 struct GMM* parallelFit(
-	const double* X, 
+	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
 	const size_t numComponents,
@@ -150,18 +150,18 @@ struct GMM* parallelFit(
 	stsa.maxIterations = maxIterations;
 	stsa.prevLogL = -INFINITY;
 	stsa.currentLogL = -INFINITY;
-	stsa.logpi = (double*)checkedCalloc(numComponents, sizeof(double));
-	stsa.loggamma = (double*)checkedCalloc(numComponents * numPoints, sizeof(double));
-	stsa.logGamma = (double*)checkedCalloc(numComponents, sizeof(double));
+	stsa.logpi = (float*)checkedCalloc(numComponents, sizeof(float));
+	stsa.loggamma = (float*)checkedCalloc(numComponents * numPoints, sizeof(float));
+	stsa.logGamma = (float*)checkedCalloc(numComponents, sizeof(float));
 	stsa.logGammaSum = 0.0;
-	stsa.logLK = (double*)checkedCalloc(numProcessors, sizeof(double));
+	stsa.logLK = (float*)checkedCalloc(numProcessors, sizeof(float));
 	stsa.numProcesses = numProcessors;
 	stsa.barrier = &barrier;
 
 	for(size_t k = 0; k < numComponents; ++k) {
-		const double pik = gmm->components[k].pi;
+		const float pik = gmm->components[k].pi;
 		assert(pik >= 0);
-		stsa.logpi[k] = log(pik);
+		stsa.logpi[k] = logf(pik);
 	}
 
 	size_t pointResidual = numPoints % numProcessors;

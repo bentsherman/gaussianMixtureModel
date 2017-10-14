@@ -2,8 +2,8 @@
 #define KMEANS_H
 
 void kmeans(
-	const double* X, const size_t numPoints, const size_t pointDim, 
-	double* M, const size_t numComponents
+	const float* X, const size_t numPoints, const size_t pointDim, 
+	float* M, const size_t numComponents
 ); 
 
 #endif

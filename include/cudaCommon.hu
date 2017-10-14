@@ -13,14 +13,14 @@ __host__ void calcDim(int N, cudaDeviceProp* devProp, dim3* block, dim3* grid);
 
 __host__ void dimToConsole(dim3* block, dim3* grid);
 
-__host__ double* mallocOnGpu(const size_t N);
+__host__ float* mallocOnGpu(const size_t N);
  
-__host__ double* sendToGpu(const size_t N, const double* A);
+__host__ float* sendToGpu(const size_t N, const float* A);
 
-__host__ double* pinHostAndSendDevice(const size_t N, double* host);
+__host__ float* pinHostAndSendDevice(const size_t N, float* host);
 
-__host__ void recvDeviceUnpinHost(double* device, double* host, const size_t N);
+__host__ void recvDeviceUnpinHost(float* device, float* host, const size_t N);
 
-__host__ void unpinHost(double* device, double* host); 
+__host__ void unpinHost(float* device, float* host); 
 
 #endif
