@@ -1,21 +1,21 @@
 OBJS_CUDA = $(patsubst src/%.cu, obj/cuda/%.o, $(wildcard src/*.cu))
-OBJS_C = $(patsubst src/%.c, obj/c/%.o, $(wildcard src/*.c))
+OBJS_CXX = $(patsubst src/%.cpp, obj/cxx/%.o, $(wildcard src/*.cpp))
 
-BINS = $(patsubst test/%.c, bin/%, $(wildcard test/*.c))
+BINS = $(patsubst test/%.cpp, bin/%, $(wildcard test/*.cpp))
 FIGS = $(patsubst doc/%.gpi, obj/%.tex, $(wildcard doc/*.gpi))
 FIGS_SECONDARY = obj/n8192-d2-k32.png obj/n32768-d2-k64.png obj/speedup.eps
 
-CC = gcc
-CCFLAGS = -O3 -Wall -std=iso9899:1999
+CXX = g++
+CXXFLAGS = -std=c++11 -O3 -Wall
 
 NVCC = nvcc
-NVCCFLAGS = -O3 -Wno-deprecated-gpu-targets
+NVCCFLAGS = -std=c++11 -O3 -Wno-deprecated-gpu-targets
 
 # -lm for math
 # -lrt for real time clock
 # -lpthread for cpu- parallel  code
-# -lcuda, lcudart -lstdc++ for linking with nvcc output
-LIBS = -L/usr/local/cuda/lib64 -lm -lrt -lpthread -lcuda -lcudart -lstdc++
+# -lcuda, lcudart for CUDA runtime
+LIBS = -L/usr/local/cuda/lib64 -lm -lrt -lpthread -lcuda -lcudart
 
 .PHONY: all clean
 .PRECIOUS: obj/test/%.o obj/%.dat obj/%-summary.dat obj/%.tex obj/%.eps
@@ -56,11 +56,11 @@ obj/%-summary.dat: analysis/%.py bin/% | obj
 # Utils
 # -----------------------------------------------------------------------------
 
-bin/%: obj/test/%.o obj/c-lib.o obj/cuda-lib.o | bin
-	$(CC) $(CCFLAGS) -o $@ $^ $(LIBS)
+bin/%: obj/test/%.o obj/libgmm.o obj/libgmm-cuda.o | bin
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
 
-obj/test/%.o: test/%.c | obj/test
-	$(CC) -c $(CCFLAGS) -I./src -o $@ $<
+obj/test/%.o: test/%.cpp | obj/test
+	$(CXX) -c $(CXXFLAGS) -I./src -o $@ $<
 
 obj/test: | obj
 	mkdir -p ./obj/test
@@ -72,24 +72,24 @@ bin:
 	mkdir -p ./bin
 
 # -----------------------------------------------------------------------------
-# C Library
+# C++ Library
 # -----------------------------------------------------------------------------
 
-obj/c-lib.o: $(OBJS_C) | obj
-	ld -r -o obj/c-lib.o $(OBJS_C)
+obj/libgmm.o: $(OBJS_CXX) | obj
+	ld -r -o obj/libgmm.o $(OBJS_CXX)
 
-obj/c/%.o: src/%.c | obj/c
-	$(CC) -c $(CCFLAGS) -I./src -o $@ $<
+obj/cxx/%.o: src/%.cpp | obj/cxx
+	$(CXX) -c $(CXXFLAGS) -I./src -o $@ $<
 
-obj/c: | obj
-	mkdir -p ./obj/c
+obj/cxx: | obj
+	mkdir -p ./obj/cxx
 
 # -----------------------------------------------------------------------------
 # CUDA Library
 # -----------------------------------------------------------------------------
 
-obj/cuda-lib.o: $(OBJS_CUDA) | obj
-	$(NVCC) -lib $(NVCCFLAGS) -o obj/cuda-lib.o $(OBJS_CUDA)
+obj/libgmm-cuda.o: $(OBJS_CUDA) | obj
+	$(NVCC) -lib $(NVCCFLAGS) -o obj/libgmm-cuda.o $(OBJS_CUDA)
 
 obj/cuda/%.o: src/%.cu | obj/cuda
 	$(NVCC) -c $(NVCCFLAGS) -I./src -o $@ $<

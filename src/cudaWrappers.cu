@@ -11,7 +11,7 @@
 #include "cudaGmm.hu"
 #include "cudaMVNormal.hu"
 
-extern "C" void gpuSum(size_t numPoints, const size_t pointDim, float* host_a, float* host_sum) {
+void gpuSum(size_t numPoints, const size_t pointDim, float* host_a, float* host_sum) {
 	assert(numPoints > 0);
 	assert(pointDim > 0);
 	assert(host_a != NULL);
@@ -23,7 +23,7 @@ extern "C" void gpuSum(size_t numPoints, const size_t pointDim, float* host_a, f
 	cudaDeviceProp deviceProp;
 	check(cudaGetDeviceProperties(&deviceProp, deviceId));
 
-	// cudaArraySum is meant for powers of two 
+	// cudaArraySum is meant for powers of two
 	size_t M = largestPowTwoLessThanEq(numPoints);
 
 	float cpuSum[pointDim];
@@ -52,7 +52,7 @@ extern "C" void gpuSum(size_t numPoints, const size_t pointDim, float* host_a, f
 	}
 }
 
-extern "C" float gpuMax(size_t N, float* host_a) {
+float gpuMax(size_t N, float* host_a) {
 	assert(host_a != NULL);
 	assert(N > 0);
 
@@ -76,7 +76,7 @@ extern "C" float gpuMax(size_t N, float* host_a) {
 	return gpuMax;
 }
 
-extern "C" void gpuLogMVNormDist(
+void gpuLogMVNormDist(
 	const size_t numPoints, const size_t pointDim,
 	const float* X, const float* mu, const float* sigmaL,
 	float* logP
@@ -110,7 +110,7 @@ extern "C" void gpuLogMVNormDist(
 	cudaFree(device_logP);
 }
 
-extern "C" float gpuGmmLogLikelihood(
+float gpuGmmLogLikelihood(
 	const size_t numPoints, const size_t numComponents,
 	const float* logpi, float* logP
 ) {
@@ -121,7 +121,7 @@ extern "C" float gpuGmmLogLikelihood(
 	check(cudaGetDeviceProperties(&deviceProp, deviceId));
 
 	float* device_logpi = sendToGpu(numComponents, logpi);
-	
+
 	// Sending all data because logP is an array organized by:
 	// [ <- numPoints -> ]_0 [ <- numPoints -> ]_... [ <- numPoints -> ]_{k-1}
 	// So even though we are only using M of those points on the GPU,
@@ -142,17 +142,17 @@ extern "C" float gpuGmmLogLikelihood(
 	return logL;
 }
 
-extern "C" void gpuCalcLogGammaNK(
+void gpuCalcLogGammaNK(
 	const size_t numPoints, const size_t numComponents,
 	const float* logpi, float* loggamma
-) { 
+) {
 	gpuGmmLogLikelihood(
 		numPoints, numComponents,
 		logpi, loggamma
-	); 
+	);
 }
 
-extern "C" void gpuCalcLogGammaK(
+void gpuCalcLogGammaK(
 	const size_t numPoints, const size_t numComponents,
 	const float* loggamma, float* logGamma
 ) {
@@ -177,10 +177,10 @@ extern "C" void gpuCalcLogGammaK(
 }
 
 
-extern "C" void gpuGmmFit(
+void gpuGmmFit(
 	const float* X,
-	const size_t numPoints, 
-	const size_t pointDim, 
+	const size_t numPoints,
+	const size_t pointDim,
 	const size_t numComponents,
 	float* pi,
 	float* Mu,
@@ -228,7 +228,7 @@ extern "C" void gpuGmmFit(
 	float* device_normalizers = pinHostAndSendDevice(numComponents, normalizers);
 
 	float* device_loggamma = mallocOnGpu(numPoints * numComponents);
-	float* device_logGamma = mallocOnGpu(numPoints * numComponents);	
+	float* device_logGamma = mallocOnGpu(numPoints * numComponents);
 
 	float previousLogL = -INFINITY;
 
@@ -237,7 +237,7 @@ extern "C" void gpuGmmFit(
 	*pinnedCurrentLogL = -INFINITY;
 
 	// logPx, mu, sigma reductions
-	// This means for mu and sigma can only do one component at a time otherwise 
+	// This means for mu and sigma can only do one component at a time otherwise
 	// the memory foot print will limit how much data we can actually work with.
 	float* device_working = mallocOnGpu(numComponents * numPoints * pointDim * pointDim);
 
@@ -267,8 +267,8 @@ extern "C" void gpuGmmFit(
 			// Fill in numPoint many probabilities
 			kernLogMVNormDist<<<grid, block, 0, streams[k]>>>(
 				numPoints, pointDim,
-				device_X, 
-				& device_Mu[k * pointDim], 
+				device_X,
+				& device_Mu[k * pointDim],
 				& device_SigmaL[k * pointDim * pointDim],
 				& device_loggamma[k * numPoints]
 			);
@@ -293,8 +293,8 @@ extern "C" void gpuGmmFit(
 
 		previousLogL = *pinnedCurrentLogL;
 		check(cudaMemcpyAsync(
-			pinnedCurrentLogL, device_working, 
-			sizeof(float), 
+			pinnedCurrentLogL, device_working,
+			sizeof(float),
 			cudaMemcpyDeviceToHost,
 			streams[numComponents - 1]
 		));
@@ -303,7 +303,7 @@ extern "C" void gpuGmmFit(
 			// synchronize everybody with the host
 			cudaStreamSynchronize(streams[k]);
 		}
-		
+
 		if(fabsf(*pinnedCurrentLogL - previousLogL) < tolerance || *pinnedCurrentLogL < previousLogL) {
 			break;
 		}
@@ -315,10 +315,10 @@ extern "C" void gpuGmmFit(
 		for(size_t k = 0; k < numComponents; ++k) {
 			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
 			cudaLogSumExp(
-				& deviceProp, grid, block, 
+				& deviceProp, grid, block,
 				numPoints,
-				& device_loggamma[k * numPoints], & device_logGamma[k * numPoints], 
-				device_workingK, 
+				& device_loggamma[k * numPoints], & device_logGamma[k * numPoints],
+				device_workingK,
 				streams[k]
 			);
 		}
@@ -328,8 +328,8 @@ extern "C" void gpuGmmFit(
 			// working[i * pointDim + j] = gamma_ik / Gamma K * x_j
 			kernCalcMu<<<grid, block, 0, streams[k]>>>(
 				numPoints, pointDim,
-				device_X, 
-				& device_loggamma[k * numPoints], 
+				device_X,
+				& device_loggamma[k * numPoints],
 				& device_logGamma[k * numPoints],
 				device_workingK
 			);
@@ -339,8 +339,8 @@ extern "C" void gpuGmmFit(
 			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
 			// working[0 + j] = sum gamma_ik / Gamma K * x_j
 			cudaArraySum(
-				&deviceProp, numPoints, pointDim, 
-				device_workingK, 
+				&deviceProp, numPoints, pointDim,
+				device_workingK,
 				streams[k]
 			);
 		}
@@ -371,7 +371,7 @@ extern "C" void gpuGmmFit(
 			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
 			kernCalcSigma<<<grid, block, 0, streams[k]>>>(
 				numPoints, pointDim,
-				device_X, 
+				device_X,
 				& device_Mu[k * pointDim],
 				& device_loggamma[k * numPoints],
 				& device_logGamma[k * numPoints],
@@ -383,8 +383,8 @@ extern "C" void gpuGmmFit(
 			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
 			// working[0 + j] = sum gamma_ik / Gamma K * [...]_j
 			cudaArraySum(
-				&deviceProp, numPoints, pointDim * pointDim, 
-				device_workingK, 
+				&deviceProp, numPoints, pointDim * pointDim,
+				device_workingK,
 				streams[k]
 			);
 		}

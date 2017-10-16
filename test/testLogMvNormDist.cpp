@@ -60,7 +60,7 @@ void test1DStandardNormal( test1DStandardNormalWrapper target ) {
 
 		float absDiff = fabsf(expected - actual);
 		if(absDiff >= FLT_EPSILON) {
-			printf("f(%.16f) = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
+			printf("f(%.16f) = %.16f, but should equal = %.16f; absDiff = %.16f\n",
 				x, actual, expected, absDiff);
 		}
 
@@ -69,25 +69,25 @@ void test1DStandardNormal( test1DStandardNormalWrapper target ) {
 }
 
 void cpuLogMvNormDistWrapper(
-	const size_t numPoints, const size_t pointDim, 
-	const float* X, const float* mu, const float* sigmaL, const float logNormalizer, 
+	const size_t numPoints, const size_t pointDim,
+	const float* X, const float* mu, const float* sigmaL, const float logNormalizer,
 	float* logP
 ) {
 	struct Component phi;
-	phi.mu = mu;
-	phi.sigmaL = sigmaL;
+	phi.mu = (float *)(mu);
+	phi.sigmaL = (float *)(sigmaL);
 	phi.normalizer = logNormalizer;
 	logMvNormDist(&phi, pointDim, X, numPoints, logP);
 }
 
 void gpuLogMvNormDistWrapper(
-	const size_t numPoints, const size_t pointDim, 
-	const float* X, const float* mu, const float* sigmaL, const float logNormalizer, 
+	const size_t numPoints, const size_t pointDim,
+	const float* X, const float* mu, const float* sigmaL, const float logNormalizer,
 	float* logP
 ) {
 	gpuLogMVNormDist(
 		numPoints, pointDim,
-		X, mu, sigmaL, logNormalizer,
+		X, mu, sigmaL,
 		logP
 	);
 }
@@ -133,7 +133,7 @@ void test1DStandardNormalParallelRun() {
 
 		float absDiff = fabsf(seqValue - cudaValue);
 		if(absDiff >= FLT_EPSILON) {
-			printf("Seq. f(%.16f) = %.16f, but Cuda f(%.16f) = %.16f; absDiff = %.16f\n", 
+			printf("Seq. f(%.16f) = %.16f, but Cuda f(%.16f) = %.16f; absDiff = %.16f\n",
 				x, x, seqValue, cudaValue, absDiff);
 		}
 

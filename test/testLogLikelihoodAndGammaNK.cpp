@@ -37,10 +37,10 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 	memset(logP, 0, numComponents * numPoints * sizeof(float));
 
 	struct Component phi;
-	phi.sigmaL = &sigma;
+	phi.sigmaL = (float *)(&sigma);
 	phi.normalizer = logNormalizer;
 	for(size_t k = 0; k < numComponents; ++k) {
-		phi.mu = &mu[k];
+		phi.mu = (float *)(&mu[k]);
 		logMvNormDist(&phi, 1, X, numPoints, & logP[k * numPoints]);
 	}
 
@@ -56,7 +56,7 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 		for(size_t i = 0; i < numPoints; ++i) {
 			float sum = 0;
 			for(size_t k = 0; k < numComponents; ++k) {
-				sum += expf(logPi[k] + logNormalizer - 0.5 * powf( X[i] - mu[k], 2.0 )); 
+				sum += expf(logPi[k] + logNormalizer - 0.5 * powf( X[i] - mu[k], 2.0 ));
 			}
 
 			expectedLogL += logf(sum);
@@ -64,7 +64,7 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 
 		float absDiff = fabsf(expectedLogL - actualLogL);
 		if(absDiff >= FLT_EPSILON) {
-			printf("log L = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
+			printf("log L = %.16f, but should equal = %.16f; absDiff = %.16f\n",
 				actualLogL, expectedLogL, absDiff);
 		}
 
@@ -73,10 +73,10 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 
 	// Verify the gammaNK portion
 	{
-		for(size_t i = 0; i < numPoints; ++i) { 
+		for(size_t i = 0; i < numPoints; ++i) {
 			float sum = 0;
 			for(size_t k = 0; k < numComponents; ++k) {
-				sum += expf(logPi[k] + logNormalizer - 0.5 * powf( X[i] - mu[k], 2.0 )); 
+				sum += expf(logPi[k] + logNormalizer - 0.5 * powf( X[i] - mu[k], 2.0 ));
 			}
 			float logPx = logf(sum);
 
@@ -86,7 +86,7 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 
 				float absDiff = fabsf(expectedGammaNK - actualGammaNK);
 				if(absDiff >= 10.0 * FLT_EPSILON) {
-					printf("gamma_{n = %zu, k = %zu} = %.16f, but should equal = %.16f; absDiff = %.16f, epsilon = %.16f\n", 
+					printf("gamma_{n = %zu, k = %zu} = %.16f, but should equal = %.16f; absDiff = %.16f, epsilon = %.16f\n",
 						i, k, actualGammaNK, expectedGammaNK, absDiff, 10.0 * FLT_EPSILON);
 				}
 

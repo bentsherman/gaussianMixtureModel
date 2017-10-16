@@ -8,7 +8,7 @@
 #include "linearAlgebra.h"
 
 void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
-	// p. 157-158., Cholesky Factorization, 4.2 LU and Cholesky Factorizations, 
+	// p. 157-158., Cholesky Factorization, 4.2 LU and Cholesky Factorizations,
 	// Numerical Analysis by Kincaid, Cheney.
 
 	// A is a real, symmetric, and positive definite pointDim x pointDim matrix
@@ -27,20 +27,20 @@ void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
 			float b = A[j * pointDim + i];
 			float absDiff = fabsf(a - b);
 			if(absDiff >= 2.0 * FLT_EPSILON) {
-				fprintf(stdout, "A[%zu, %zu] should be symmetric (%f != %f). absdiff: %.16f\n", 
+				fprintf(stdout, "A[%zu, %zu] should be symmetric (%f != %f). absdiff: %.16f\n",
 					i, j, a, b, absDiff);
 				//assert(0);
 			}
 		}
 	}
-	
+
 	// L is the resulting lower diagonal portion of A = LL^T
 	assert(L != NULL);
 	memset(L, 0, sizeof(float) * pointDim * pointDim);
 
 	for (size_t k = 0; k < pointDim; ++k) {
 		float sum = 0;
-		for (int s = 0; s < k; ++s) {
+		for (size_t s = 0; s < k; ++s) {
 			const float l = L[k * pointDim + s];
 			const float ll = l * l;
 			assert(ll == ll);
@@ -49,7 +49,7 @@ void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
 			assert(ll >= 0);
 			sum += ll;
 		}
-	
+
 		assert(sum == sum);
 		assert(sum != -INFINITY);
 		assert(sum != INFINITY);
@@ -72,9 +72,9 @@ void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
 		}
 
 		L[k * pointDim + k] = sqrtf(sum);
-		for (int i = k + 1; i < pointDim; ++i) {
+		for (size_t i = k + 1; i < pointDim; ++i) {
 			float subsum = 0;
-			for (int s = 0; s < k; ++s)
+			for (size_t s = 0; s < k; ++s)
 				subsum += L[i * pointDim + s] * L[k * pointDim + s];
 
 			L[i * pointDim + k] = (A[i * pointDim + k] - subsum) / L[k * pointDim + k];
@@ -92,7 +92,7 @@ void solvePositiveDefinite(const float* L, const float* B, float* X, const size_
 
 	float* Z = (float*)calloc(numPoints * pointDim, sizeof(float));
 
-	// 2015-09-23 GEL play the access of L into L(F)orward and L(B)ackward. 
+	// 2015-09-23 GEL play the access of L into L(F)orward and L(B)ackward.
 	// Found that sequential access improved runtime. 2017-03-24 GEL basically
 	// pretend to carry out the forward and backward solvers, but to improve
 	// runtime, load in L in sequential order ahead of time, so second time
