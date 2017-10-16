@@ -1,61 +1,67 @@
 #include <assert.h>
-#include <errno.h>
-#include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
-#include <time.h>
+#include <string.h>
 
-#include "datFile.h"
 #include "gmm.h"
 #include "cudaGmm.h"
 #include "util.h"
 
-void usage(const char* programName) {
-	assert(programName != NULL);
-	fprintf(stdout, "%s <train.dat> <numComponents>\n", programName);
-}
+#include "cudaWrappers.h"
 
-int main(int argc, char** argv) {
+struct GMM* cudaFit(
+	const float* X, 
+	const size_t numPoints, 
+	const size_t pointDim, 
+	const size_t numComponents,
+	const size_t maxIterations
+) {
+	assert(X != NULL);
+	assert(numPoints > 0);
+	assert(pointDim > 0);
+	assert(numComponents > 0);
+	
+	struct GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
-	if(argc != 3) {
-		usage(argv[0]);
-		return EXIT_FAILURE;
+	float* pi = (float*) malloc(numComponents * sizeof(float));
+	float* Mu = (float*) malloc(numComponents * pointDim * sizeof(float));
+	float* Sigma = (float*) malloc(numComponents * pointDim * pointDim * sizeof(float));	
+	float* SigmaL = (float*) malloc(numComponents * pointDim * pointDim * sizeof(float));
+	float* normalizers = (float*) malloc(numComponents * sizeof(float));
+
+	for(size_t k = 0; k < numComponents; ++k) {
+		struct Component* c = & gmm->components[k];
+
+		pi[k] = c->pi;
+		memcpy(&Mu[k * pointDim], c->mu, pointDim * sizeof(float));
+		memcpy(&Sigma[k * pointDim * pointDim], c->sigma, pointDim * pointDim * sizeof(float));
+		memcpy(&SigmaL[k * pointDim * pointDim], c->sigmaL, pointDim * pointDim * sizeof(float));
+		normalizers[k] = c->normalizer;
 	}
 
-	size_t numComponents;
-	if(!strToPositiveInteger(argv[2], &numComponents)) {
-		fprintf(stdout, "Expected numComponents to be a positive integer.\n");
-		usage(argv[0]);
-		return EXIT_FAILURE;
+	gpuGmmFit(
+		X,
+		numPoints, pointDim, numComponents,
+		pi, Mu, Sigma,
+		SigmaL, normalizers,
+		maxIterations
+	);
+
+	for(size_t k = 0; k < numComponents; ++k) {
+		struct Component* c = & gmm->components[k];
+
+		c->pi = pi[k];
+		memcpy(c->mu, &Mu[k * pointDim], pointDim * sizeof(float));
+		memcpy(c->sigma, &Sigma[k * pointDim * pointDim], pointDim * pointDim * sizeof(float));
+		memcpy(c->sigmaL, &SigmaL[k * pointDim * pointDim], pointDim * pointDim * sizeof(float));
+		c->normalizer = normalizers[k];
 	}
 
-	size_t numPoints = 0, pointDim = 0;
-	float* data = parseDatFile(argv[1], &numPoints, &pointDim);
-	if(data == NULL) {
-		return EXIT_FAILURE;
-	}
+	free(normalizers);
+	free(SigmaL);
+	free(Sigma);
+	free(Mu);
+	free(pi);
 
-	if(numPoints < numComponents) {
-		fprintf(stdout, "Number of components should be less than or equal to number of points.\n");
-		free(data);
-		return EXIT_FAILURE;
-	}
-
-	struct timeval start, stop;
-	gettimeofday(&start, NULL);
-
-	struct GMM* gmm = cudaFit(data, numPoints, pointDim, numComponents, 100);
-
-	gettimeofday(&stop, NULL);
-	float elapsedSec = calcElapsedSec(&start, &stop);
-
-	fprintf(stdout, "{\n");
-	fprintf(stdout, "\"file\": \"%s\",\n", argv[1]);
-	fprintf(stdout, "\"elapsedSec\": %.6f,\n", elapsedSec);
-	fprintf(stdout, "\"model\": ");
-	printGmmToConsole(gmm);
-	fprintf(stdout, "}\n");
-
-	freeGMM(gmm);
-	free(data);
-	return EXIT_SUCCESS;
+	return gmm;
 }
