@@ -7,9 +7,9 @@
 #include "util.h"
 
 GMM* fit(
-	const float* X, 
-	const size_t numPoints, 
-	const size_t pointDim, 
+	const float* X,
+	const size_t numPoints,
+	const size_t pointDim,
 	const size_t numComponents,
 	const size_t maxIterations
 ) {
@@ -18,7 +18,7 @@ GMM* fit(
 	assert(pointDim > 0);
 	assert(numComponents > 0);
 	assert(maxIterations > 0);
-	
+
 	GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
 	const float tolerance = 1e-8;
@@ -44,39 +44,40 @@ GMM* fit(
 
 		// Compute gamma
 		calcLogMvNorm(
-			gmm->components, numComponents, 
-			0, numComponents, 
+			gmm->components, numComponents,
+			0, numComponents,
 			X, numPoints, pointDim,
 			loggamma
 		);
-	
-		// 2015-09-20 GEL Eliminated redundant mvNorm clac in logLikelihood by 
+
+		// 2015-09-20 GEL Eliminated redundant mvNorm clac in logLikelihood by
 		// passing in precomputed gamma values. Also moved loop termination here
-		// since likelihood determines termination. Result: 1.3x improvement in 
+		// since likelihood determines termination. Result: 1.3x improvement in
 		// execution time.  (~8 ms to ~6 ms on oldFaithful.dat)
 		// 2017-04-14 GEL Decided to fuse logLikelihood and Gamma NK calculation
-		// since they both rely on the log p(x) calculation, and it would be 
+		// since they both rely on the log p(x) calculation, and it would be
 		// wasteful to compute and store p(x), since log L and gamma NK are only
 		// consumers of that data.
 		prevLogL = currentLogL;
 		logLikelihoodAndGammaNK(
-			logpi, numComponents, 
+			logpi, numComponents,
 			loggamma, numPoints,
 			0, numPoints,
 			& currentLogL
 		);
 
 		if(!shouldContinue(prevLogL, currentLogL, tolerance)) {
+			gmm->logL = currentLogL;
 			break;
 		}
 
 		// Let Gamma[component] = \Sum_point gamma[component, point]
 		calcLogGammaK(
-			loggamma, numPoints, 
-			0, numComponents, 
+			loggamma, numPoints,
+			0, numComponents,
 			logGamma, numComponents
 		);
-	
+
 		float logGammaSum = calcLogGammaSum(logpi, numComponents, logGamma);
 
 		// --- M-Step ---

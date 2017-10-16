@@ -12,6 +12,9 @@ typedef struct {
 	// The individual components that constitute the model
 	size_t numComponents;
 	Component* components;
+
+	// The final log-likelihood of the model
+	float logL;
 } GMM;
 
 GMM* initGMM(
