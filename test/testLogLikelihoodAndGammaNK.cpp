@@ -36,7 +36,7 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 	float logP[numComponents * numPoints];
 	memset(logP, 0, numComponents * numPoints * sizeof(float));
 
-	struct Component phi;
+	Component phi;
 	phi.sigmaL = (float *)(&sigma);
 	phi.normalizer = logNormalizer;
 	for(size_t k = 0; k < numComponents; ++k) {

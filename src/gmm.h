@@ -5,26 +5,26 @@
 
 #include "component.h"
 
-struct GMM {
+typedef struct {
 	// Dimension of the data (each data point is a vector \in R^{pointDim})
 	size_t pointDim;
 
 	// The individual components that constitute the model
 	size_t numComponents;
-	struct Component* components;
-};
+	Component* components;
+} GMM;
 
-struct GMM* initGMM(
-	const float* X, 
-	const size_t numPoints, 
-	const size_t pointDim, 
+GMM* initGMM(
+	const float* X,
+	const size_t numPoints,
+	const size_t pointDim,
 	const size_t numComponents
-); 
+);
 
-void freeGMM(struct GMM* gmm);
+void freeGMM(GMM* gmm);
 
 void calcLogMvNorm(
-	const struct Component* components, const size_t numComponents,
+	const Component* components, const size_t numComponents,
 	const size_t componentStart, const size_t componentEnd,
 	const float* X, const size_t numPoints, const size_t pointDim,
 	float* logProb
@@ -67,7 +67,7 @@ float calcLogGammaSum(
 );
 
 void performMStep(
-	struct Component* components, const size_t numComponents,
+	Component* components, const size_t numComponents,
 	const size_t componentStart, const size_t componentEnd,
 	float* logpi, float* loggamma, float* logGamma, const float logGammaSum,
 	const float* X, const size_t numPoints, const size_t pointDim,
@@ -79,7 +79,7 @@ float* generateGmmData(
 );
 
 void printGmmToConsole(
-	struct GMM* gmm
+	GMM* gmm
 );
 
 #endif

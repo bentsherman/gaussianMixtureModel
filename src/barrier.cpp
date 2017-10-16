@@ -6,7 +6,7 @@
 
 #include "barrier.h"
 
-void initBarrier(struct Barrier* barrier, size_t headCount) {
+void initBarrier(Barrier* barrier, size_t headCount) {
 	assert(barrier != NULL);
 	assert(headCount > 0);
 
@@ -16,13 +16,13 @@ void initBarrier(struct Barrier* barrier, size_t headCount) {
 	barrier->totalProcessors = headCount;
 }
 
-void destroyBarrier(struct Barrier* barrier) {
+void destroyBarrier(Barrier* barrier) {
 	assert(barrier != NULL);
 	pthread_mutex_destroy(&barrier->mx);
 	pthread_cond_destroy(&barrier->cv);
 }
 
-void arriveAt(struct Barrier* barrier, void* arg, void (*callback)(void*) ) {
+void arriveAt(Barrier* barrier, void* arg, void (*callback)(void*) ) {
 	assert(barrier != NULL);
 
 	pthread_mutex_lock(&barrier->mx);

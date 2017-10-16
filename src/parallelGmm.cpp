@@ -10,7 +10,7 @@
 #include "util.h"
 
 void checkStopCriteria(void* untypedArgs) {
-	struct SharedThreadStartArgs* sargs = (struct SharedThreadStartArgs*) untypedArgs;
+	SharedThreadStartArgs* sargs = (SharedThreadStartArgs*) untypedArgs;
 	assert(sargs != NULL);
 
 	sargs->prevLogL = sargs->currentLogL;
@@ -26,7 +26,7 @@ void checkStopCriteria(void* untypedArgs) {
 }
 
 void computeGammaSum(void* untypedArgs) {
-	struct SharedThreadStartArgs* sargs = (struct SharedThreadStartArgs*) untypedArgs;
+	SharedThreadStartArgs* sargs = (SharedThreadStartArgs*) untypedArgs;
 	assert(sargs != NULL);
 
 	sargs->logGammaSum = calcLogGammaSum( 
@@ -37,10 +37,10 @@ void computeGammaSum(void* untypedArgs) {
 }
 
 void* parallelFitStart(void* untypedArgs) {
-	struct ThreadStartArgs* args = (struct ThreadStartArgs*) untypedArgs;
+	ThreadStartArgs* args = (ThreadStartArgs*) untypedArgs;
 	assert(args != NULL);
 
-	struct SharedThreadStartArgs* sargs = args->shared;
+	SharedThreadStartArgs* sargs = args->shared;
 
 	const size_t numComponents = sargs->gmm->numComponents;
 
@@ -112,7 +112,7 @@ void* parallelFitStart(void* untypedArgs) {
 	return NULL;
 }
 
-struct GMM* parallelFit(
+GMM* parallelFit(
 	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
@@ -129,17 +129,17 @@ struct GMM* parallelFit(
 		return fit(X, numPoints, pointDim, numComponents, maxIterations);
 	}
 
-	struct GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
+	GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
 	size_t numProcessors = 8;
 	if(numComponents < numProcessors) {
 		numProcessors = numComponents;
 	}
 
-	struct Barrier barrier;
+	Barrier barrier;
 	initBarrier(&barrier, numProcessors);
 
-	struct SharedThreadStartArgs stsa;
+	SharedThreadStartArgs stsa;
 	stsa.X = X;
 	stsa.numPoints = numPoints;
 	stsa.pointDim = pointDim;
@@ -170,7 +170,7 @@ struct GMM* parallelFit(
 	size_t componentResidual = numComponents % numProcessors;
 	size_t componentsPerProcessor = (numComponents - componentResidual) / numProcessors;
 
-	struct ThreadStartArgs args[numProcessors];
+	ThreadStartArgs args[numProcessors];
 	for(size_t i = 0; i < numProcessors; ++i) {
 		args[i].id = i;	
 		args[i].shared = &stsa;

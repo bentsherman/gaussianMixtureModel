@@ -45,7 +45,7 @@ void test1DStandardNormalLogGammaNK(int gnkIncPik, CalcLogGammaNKWrapper target)
 	float logP[numPoints];
 	memset(logP, 0, numPoints * sizeof(float));
 
-	struct Component phi;
+	Component phi;
 	phi.mu = mu;
 	phi.sigmaL = sigmaL;
 	phi.normalizer = logNormalizer;

@@ -6,7 +6,7 @@
 #include "seqGmm.h"
 #include "util.h"
 
-struct GMM* fit(
+GMM* fit(
 	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
@@ -19,7 +19,7 @@ struct GMM* fit(
 	assert(numComponents > 0);
 	assert(maxIterations > 0);
 	
-	struct GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
+	GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
 	const float tolerance = 1e-8;
 	size_t iteration = 0;

@@ -9,7 +9,7 @@
 
 #include "cudaWrappers.h"
 
-struct GMM* cudaFit(
+GMM* cudaFit(
 	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
@@ -21,7 +21,7 @@ struct GMM* cudaFit(
 	assert(pointDim > 0);
 	assert(numComponents > 0);
 	
-	struct GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
+	GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
 	float* pi = (float*) malloc(numComponents * sizeof(float));
 	float* Mu = (float*) malloc(numComponents * pointDim * sizeof(float));
@@ -30,7 +30,7 @@ struct GMM* cudaFit(
 	float* normalizers = (float*) malloc(numComponents * sizeof(float));
 
 	for(size_t k = 0; k < numComponents; ++k) {
-		struct Component* c = & gmm->components[k];
+		Component* c = & gmm->components[k];
 
 		pi[k] = c->pi;
 		memcpy(&Mu[k * pointDim], c->mu, pointDim * sizeof(float));
@@ -48,7 +48,7 @@ struct GMM* cudaFit(
 	);
 
 	for(size_t k = 0; k < numComponents; ++k) {
-		struct Component* c = & gmm->components[k];
+		Component* c = & gmm->components[k];
 
 		c->pi = pi[k];
 		memcpy(c->mu, &Mu[k * pointDim], pointDim * sizeof(float));

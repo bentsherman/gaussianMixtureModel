@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 	struct timeval start, stop;
 	gettimeofday(&start, NULL);
 
-	struct GMM* gmm = fit(data, numPoints, pointDim, numComponents, 100);
+	GMM* gmm = fit(data, numPoints, pointDim, numComponents, 100);
 
 	gettimeofday(&stop, NULL);
 	float elapsedSec = calcElapsedSec(&start, &stop);

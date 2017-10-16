@@ -5,7 +5,7 @@
 
 #include "gmm.h"
 
-struct GMM* fit(
+GMM* fit(
 	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 

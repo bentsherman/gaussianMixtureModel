@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-struct Component {
+typedef struct {
 	// Parameters, weight, mean, covariance
 	float pi;
 	float* mu;
@@ -14,23 +14,23 @@ struct Component {
 
 	// Probability density normalizer
 	float normalizer;
-};
+} Component;
 
 void printToConsole(
-	const struct Component* component,
+	const Component* component,
 	const size_t pointDim
 );
 
 void prepareCovariance(
-	struct Component* component, 
+	Component* component,
 	const size_t pointDim
-); 
+);
 
 void logMvNormDist(
-	const struct Component* component, const size_t pointDim, 
-	const float* X, const size_t numPoints, 
+	const Component* component, const size_t pointDim,
+	const float* X, const size_t numPoints,
 	float* logProb
-); 
+);
 
 float sampleStandardNormal();
 

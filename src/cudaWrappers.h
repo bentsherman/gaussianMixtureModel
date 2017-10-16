@@ -3,8 +3,6 @@
 
 #include <stdlib.h>
 
-struct GmmEmGpuCtx;
-
 void gpuGmmFit(
 	const float* X,
 	const size_t numPoints,

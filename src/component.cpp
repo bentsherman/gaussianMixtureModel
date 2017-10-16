@@ -13,7 +13,7 @@
 #define PI 3.141592653589793238
 #endif
 
-void printToConsole(const struct Component* component, const size_t pointDim) {
+void printToConsole(const Component* component, const size_t pointDim) {
 	if(component == NULL) {
 		fprintf(stdout, "NULL\n");
 		return;
@@ -43,7 +43,7 @@ void printToConsole(const struct Component* component, const size_t pointDim) {
 	fprintf(stdout, "}");
 }
 
-void prepareCovariance(struct Component* component, const size_t pointDim) {
+void prepareCovariance(Component* component, const size_t pointDim) {
 	assert(component != NULL);
 
 	// Perform cholesky factorization once each iteration instead of 
@@ -69,7 +69,7 @@ void prepareCovariance(struct Component* component, const size_t pointDim) {
 }
 
 void logMvNormDist(
-	const struct Component* component, const size_t pointDim,
+	const Component* component, const size_t pointDim,
 	const float* X, const size_t numPoints, 
 	float* P
 ) {

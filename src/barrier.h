@@ -6,26 +6,26 @@
 #include <sys/types.h>
 #include <pthread.h>
 
-struct Barrier {
+typedef struct {
 	pthread_cond_t cv;
 	pthread_mutex_t mx;
 	size_t totalProcessors;
 	size_t waitingProcessors;
-};
+} Barrier;
 
 void initBarrier(
-	struct Barrier* barrier, 
+	Barrier* barrier,
 	size_t headCount
-); 
+);
 
 void destroyBarrier(
-	struct Barrier* barrier
-); 
+	Barrier* barrier
+);
 
 void arriveAt(
-	struct Barrier* barrier, 
-	void* arg, 
-	void (*callback)(void*) 
-); 
+	Barrier* barrier,
+	void* arg,
+	void (*callback)(void*)
+);
 
 #endif

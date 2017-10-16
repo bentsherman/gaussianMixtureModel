@@ -10,7 +10,7 @@
 #include "linearAlgebra.h"
 #include "util.h"
 
-struct GMM* initGMM(
+GMM* initGMM(
 	const float* X, 
 	const size_t numPoints, 
 	const size_t pointDim, 
@@ -23,10 +23,10 @@ struct GMM* initGMM(
 
 	// X is an numPoints x pointDim set of training data
 
-	struct GMM* gmm = (struct GMM*)checkedCalloc(1, sizeof(struct GMM));
+	GMM* gmm = (GMM*)checkedCalloc(1, sizeof(GMM));
 	gmm->pointDim = pointDim;
 	gmm->numComponents = numComponents;
-	gmm->components = (struct Component*) checkedCalloc(numComponents, sizeof(struct Component));
+	gmm->components = (Component*) checkedCalloc(numComponents, sizeof(Component));
 
 	// Seed with kmeans (seeding with random points can lead to degeneracy)
 	float M[pointDim * numComponents];
@@ -42,7 +42,7 @@ struct GMM* initGMM(
 
 	float uniformTau = 1.0 / numComponents;
 	for(size_t k = 0; k < gmm->numComponents; ++k) {
-		struct Component* component = & gmm->components[k];
+		Component* component = & gmm->components[k];
 
 		// Assume every component has uniform weight
 		component->pi = uniformTau;
@@ -66,11 +66,11 @@ struct GMM* initGMM(
 	return gmm;
 }
 
-void freeGMM(struct GMM* gmm) {
+void freeGMM(GMM* gmm) {
 	assert(gmm != NULL);
 
 	for(size_t k = 0; k < gmm->numComponents; ++k) {
-		struct Component* component = & gmm->components[k];
+		Component* component = & gmm->components[k];
 		free(component->mu);
 		free(component->sigma);
 		free(component->sigmaL);
@@ -81,7 +81,7 @@ void freeGMM(struct GMM* gmm) {
 }
 
 void calcLogMvNorm(
-	const struct Component* components, const size_t numComponents,
+	const Component* components, const size_t numComponents,
 	const size_t componentStart, const size_t componentEnd,
 	const float* X, const size_t numPoints, const size_t pointDim,
 	float* logProb
@@ -294,7 +294,7 @@ float calcLogGammaSum(
 }
 
 void performMStep(
-	struct Component* components, const size_t numComponents,
+	Component* components, const size_t numComponents,
 	const size_t componentStart, const size_t componentEnd,
 	float* logpi, float* loggamma, float* logGamma, const float logGammaSum,
 	const float* X, const size_t numPoints, const size_t pointDim,
@@ -316,7 +316,7 @@ void performMStep(
 
 	// update pi
 	for(size_t k = componentStart; k < componentEnd; ++k) {
-		struct Component* component = & components[k];
+		Component* component = & components[k];
 		logpi[k] += logGamma[k] - logGammaSum;
 		component->pi = expf(logpi[k]);
 		assert(0 <= component->pi && component->pi <= 1);
@@ -337,7 +337,7 @@ void performMStep(
 
 	// Update mu
 	for(size_t k = componentStart; k < componentEnd; ++k) {
-		struct Component* component = & components[k];
+		Component* component = & components[k];
 
 		memset(component->mu, 0, pointDim * sizeof(float));
 		for (size_t point = 0; point < numPoints; ++point) {
@@ -353,7 +353,7 @@ void performMStep(
 
 	// Update sigma
 	for(size_t k = componentStart; k < componentEnd; ++k) {
-		struct Component* component = & components[k];
+		Component* component = & components[k];
 		memset(component->sigma, 0, pointDim * pointDim * sizeof(float));
 		for (size_t point = 0; point < numPoints; ++point) {
 			// (x - m)
@@ -453,7 +453,7 @@ float* generateGmmData(
 	return X;
 }
 
-void printGmmToConsole(struct GMM* gmm) { 
+void printGmmToConsole(GMM* gmm) { 
 	assert(gmm != NULL);
 
 	fprintf(stdout, "{\n");

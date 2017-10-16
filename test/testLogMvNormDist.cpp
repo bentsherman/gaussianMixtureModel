@@ -73,7 +73,7 @@ void cpuLogMvNormDistWrapper(
 	const float* X, const float* mu, const float* sigmaL, const float logNormalizer,
 	float* logP
 ) {
-	struct Component phi;
+	Component phi;
 	phi.mu = (float *)(mu);
 	phi.sigmaL = (float *)(sigmaL);
 	phi.normalizer = logNormalizer;
