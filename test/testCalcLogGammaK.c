@@ -36,12 +36,12 @@ void test1DStandardNormalLogGammaK(CalcLogGammaKWrapper target) {
 	for(size_t k = 0; k < numComponents; ++k) {
 		float actual = logGamma[k];
 		float absDiff = fabsf(expected - actual);
-		if(absDiff >= DBL_EPSILON) {
+		if(absDiff >= FLT_EPSILON) {
 			printf("Gamma_{k = %zu} = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
 				k, actual, expected, absDiff);
 		}
 
-		assert(absDiff < DBL_EPSILON);
+		assert(absDiff < FLT_EPSILON);
 	}
 }
 

@@ -35,13 +35,13 @@ void test(const size_t N, const size_t pointDim, float* a) {
 		assert(device_sum[i] == device_sum[i]);
 
 		float absDiff = fabsf(host_sum[i] - device_sum[i]);
-		if(absDiff >= DBL_EPSILON) {
+		if(absDiff >= FLT_EPSILON) {
 			printf("N: %zu, i: %zu, host_sum: %.16f, device_sum: %.16f, absDiff: %.16f\n", 
 				N, i, host_sum[i], device_sum[i], absDiff
 				);
 		}
 
-		assert(absDiff < DBL_EPSILON);
+		assert(absDiff < FLT_EPSILON);
 	}
 }
 

@@ -248,7 +248,7 @@ __global__ void kernPrepareCovariances(
 		assert(sum >= 0);
 
 		sum = A[k * pointDim + k] - sum;
-		if (sum <= DBL_EPSILON) {
+		if (sum <= FLT_EPSILON) {
 			printf("A must be positive definite. (sum = %E)\n", sum);
 			assert(sum > 0);
 			break;

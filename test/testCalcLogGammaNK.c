@@ -80,12 +80,12 @@ void test1DStandardNormalLogGammaNK(int gnkIncPik, CalcLogGammaNKWrapper target)
 			}
 
 			float absDiff = fabsf(expected - actual);
-			if(absDiff >= DBL_EPSILON) {
+			if(absDiff >= FLT_EPSILON) {
 				printf("gamma_{n = %zu, k = %zu} = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
 					i, k, actual, expected, absDiff);
 			}
 
-			assert(absDiff < DBL_EPSILON);
+			assert(absDiff < FLT_EPSILON);
 		}
 	}
 }

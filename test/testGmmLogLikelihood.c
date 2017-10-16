@@ -85,12 +85,12 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 	}
 
 	float absDiff = fabsf(expected - actual);
-	if(absDiff >= DBL_EPSILON) {
+	if(absDiff >= FLT_EPSILON) {
 		printf("log L = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
 			actual, expected, absDiff);
 	}
 
-	assert(absDiff < DBL_EPSILON);
+	assert(absDiff < FLT_EPSILON);
 }
 
 float cpuGmmLogLikelihoodWrapper(

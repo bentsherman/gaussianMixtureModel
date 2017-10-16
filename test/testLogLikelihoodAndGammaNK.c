@@ -63,12 +63,12 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 		}
 
 		float absDiff = fabsf(expectedLogL - actualLogL);
-		if(absDiff >= DBL_EPSILON) {
+		if(absDiff >= FLT_EPSILON) {
 			printf("log L = %.16f, but should equal = %.16f; absDiff = %.16f\n", 
 				actualLogL, expectedLogL, absDiff);
 		}
 
-		assert(absDiff < DBL_EPSILON);
+		assert(absDiff < FLT_EPSILON);
 	}
 
 	// Verify the gammaNK portion
@@ -85,12 +85,12 @@ void test1DStandardNormalLogLikelihood(GmmLogLikelihoodWrapper target) {
 				float actualGammaNK = logP[k * numPoints + i];
 
 				float absDiff = fabsf(expectedGammaNK - actualGammaNK);
-				if(absDiff >= 10.0 * DBL_EPSILON) {
+				if(absDiff >= 10.0 * FLT_EPSILON) {
 					printf("gamma_{n = %zu, k = %zu} = %.16f, but should equal = %.16f; absDiff = %.16f, epsilon = %.16f\n", 
-						i, k, actualGammaNK, expectedGammaNK, absDiff, 10.0 * DBL_EPSILON);
+						i, k, actualGammaNK, expectedGammaNK, absDiff, 10.0 * FLT_EPSILON);
 				}
 
-				assert(absDiff < 10.0 * DBL_EPSILON);
+				assert(absDiff < 10.0 * FLT_EPSILON);
 			}
 		}
 	}

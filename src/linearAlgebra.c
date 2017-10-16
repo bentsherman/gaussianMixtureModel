@@ -26,7 +26,7 @@ void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
 			// Check that we are symmetric
 			float b = A[j * pointDim + i];
 			float absDiff = fabsf(a - b);
-			if(absDiff >= 2.0 * DBL_EPSILON) {
+			if(absDiff >= 2.0 * FLT_EPSILON) {
 				fprintf(stdout, "A[%zu, %zu] should be symmetric (%f != %f). absdiff: %.16f\n", 
 					i, j, a, b, absDiff);
 				//assert(0);
@@ -56,7 +56,7 @@ void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
 		assert(sum >= 0);
 
 		sum = A[k * pointDim + k] - sum;
-		if (sum <= DBL_EPSILON) {
+		if (sum <= FLT_EPSILON) {
 			fprintf(stdout, "A:\n");
 			for(size_t i = 0; i < pointDim; ++i) {
 				for(size_t j = 0; j < pointDim; ++j) {
@@ -207,7 +207,7 @@ void vecAddInplace(float* a, const float* b, const size_t D) {
 
 void vecDivByScalar(float* a, const float b, const size_t D) {
 	assert(a != NULL);
-	assert(fabsf(b) > DBL_EPSILON);
+	assert(fabsf(b) > FLT_EPSILON);
 	assert(D > 0);
 
 	for(size_t d = 0; d < D; ++d) {

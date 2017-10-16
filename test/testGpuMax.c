@@ -30,13 +30,13 @@ void test(const size_t N, float* a) {
 	assert(device_max == device_max);
 
 	float absDiff = fabsf(host_max - device_max);
-	if(absDiff >= DBL_EPSILON) {
+	if(absDiff >= FLT_EPSILON) {
 		printf("N: %zu, host_max: %.16f, device_max: %.16f, absDiff: %.16f\n", 
 			N, host_max, device_max, absDiff
 			);
 	}
 
-	assert(absDiff < DBL_EPSILON);
+	assert(absDiff < FLT_EPSILON);
 }
 
 void testPowTwos() {
