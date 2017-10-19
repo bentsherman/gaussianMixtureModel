@@ -13,7 +13,8 @@ typedef struct {
 	size_t numComponents;
 	Component* components;
 
-	// The final log-likelihood of the model
+	// The output labels and final log-likelihood
+	int* y_pred;
 	float logL;
 } GMM;
 
@@ -68,6 +69,8 @@ float calcLogGammaSum(
 	const float* logpi, const size_t numComponents,
 	const float* logGamma
 );
+
+int* calcLabels(float* loggamma, size_t numPoints, size_t numComponents);
 
 void performMStep(
 	Component* components, const size_t numComponents,

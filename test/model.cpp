@@ -13,6 +13,14 @@ void usage(const char* programName) {
 	fprintf(stdout, "%s <train.dat> <min-k> <max-k>\n", programName);
 }
 
+void print_vector(int* v, int n)
+{
+	for ( int i = 0; i < n; i++ ) {
+		fprintf(stdout, "%d", v[i]);
+	}
+	fprintf(stdout, "\n");
+}
+
 int main(int argc, char** argv) {
 	if(argc != 4) {
 		usage(argv[0]);
@@ -44,10 +52,14 @@ int main(int argc, char** argv) {
 	struct timeval start, stop;
 	gettimeofday(&start, NULL);
 
-	model.run(data, numPoints, pointDim);
+	GMM *gmm = model.run(data, numPoints, pointDim);
 
 	gettimeofday(&stop, NULL);
 	float elapsedSec = calcElapsedSec(&start, &stop);
+
+	fprintf(stdout, "\n");
+	print_vector(gmm->y_pred, numPoints);
+	fprintf(stdout, "\n");
 
 	fprintf(stdout, "{\n");
 	fprintf(stdout, "\"file\": \"%s\",\n", argv[1]);
@@ -55,6 +67,7 @@ int main(int argc, char** argv) {
 	fprintf(stdout, "}\n");
 
 	free(data);
+	freeGMM(gmm);
 
 	return EXIT_SUCCESS;
 }

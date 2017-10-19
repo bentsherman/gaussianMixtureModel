@@ -8,12 +8,12 @@ ClusteringModel::ClusteringModel(const std::vector<int>& components)
 	this->_components = components;
 }
 
-float BIC(GMM *model, int n, int d)
+float BIC(GMM *gmm, int n, int d)
 {
-	int k = model->numComponents;
+	int k = gmm->numComponents;
 	int p = k * (1 + d + d * d);
 
-	return logf(n) * p - 2 * model->logL;
+	return logf(n) * p - 2 * gmm->logL;
 }
 
 GMM * ClusteringModel::run(const float *X, int n, int d)
@@ -22,24 +22,32 @@ GMM * ClusteringModel::run(const float *X, int n, int d)
 	std::vector<GMM *> models;
 
 	for ( int k : _components ) {
-		GMM *model = fit(X, n, d, k, 100);
+		GMM *gmm = fit(X, n, d, k, 100);
 
-		models.push_back(model);
+		models.push_back(gmm);
 	}
 
-	// evaluate each model with BIC
+	// find the model with the lowest BIC value
 	float min_criterion = 0;
 	GMM *min_model = nullptr;
 
-	for ( GMM *model : models ) {
-		float criterion = BIC(model, n, d);
+	for ( GMM *gmm : models ) {
+		float criterion = BIC(gmm, n, d);
 
-		printGmmToConsole(model);
+		printGmmToConsole(gmm);
 		fprintf(stdout, "BIC: %f\n", criterion);
+
 
 		if ( min_model == nullptr || criterion < min_criterion ) {
 			min_criterion = criterion;
-			min_model = model;
+			min_model = gmm;
+		}
+	}
+
+	// cleanup unused models
+	for ( GMM *gmm : models ) {
+		if ( gmm != min_model ) {
+			freeGMM(gmm);
 		}
 	}
 

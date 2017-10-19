@@ -11,9 +11,9 @@
 #include "util.h"
 
 GMM* initGMM(
-	const float* X, 
-	const size_t numPoints, 
-	const size_t pointDim, 
+	const float* X,
+	const size_t numPoints,
+	const size_t pointDim,
 	const size_t numComponents
 ) {
 	assert(X != NULL);
@@ -54,11 +54,11 @@ GMM* initGMM(
 		component->sigma = (float*)checkedCalloc(pointDim * pointDim, sizeof(float));
 		for (size_t dim = 0; dim < pointDim; ++dim)
 			component->sigma[dim * pointDim + dim] = 1;
-		
+
 		// Initialize zero artifacts
 		component->sigmaL = (float*)checkedCalloc(pointDim * pointDim, sizeof(float));
 		component->normalizer = 0;
-	
+
 		prepareCovariance(component, pointDim);
 	}
 
@@ -77,6 +77,7 @@ void freeGMM(GMM* gmm) {
 	}
 
 	free(gmm->components);
+	free(gmm->y_pred);
 	free(gmm);
 }
 
@@ -98,7 +99,7 @@ void calcLogMvNorm(
 	for (size_t k = componentStart; k < componentEnd; ++k) {
 		logMvNormDist(
 			& components[k], pointDim,
-			X, numPoints, 
+			X, numPoints,
 			& logProb[k * numPoints]
 		);
 	}
@@ -109,7 +110,7 @@ void logLikelihood(
 	const float* logProb, const size_t numPoints,
 	const size_t pointStart, const size_t pointEnd,
 	float* logL
-) { 
+) {
 	assert(logpi != NULL);
 	assert(numComponents > 0);
 	assert(logProb != NULL);
@@ -345,7 +346,7 @@ void performMStep(
 				component->mu[dim] += loggamma[k * numPoints + point] * X[point * pointDim + dim];
 			}
 		}
-	
+
 		for (size_t i = 0; i < pointDim; ++i) {
 			component->mu[i] /= logGamma[k];
 		}
@@ -376,9 +377,30 @@ void performMStep(
 		for (size_t i = 0; i < pointDim * pointDim; ++i) {
 			component->sigma[i] /= logGamma[k];
 		}
-	
+
 		prepareCovariance(component, pointDim);
 	}
+}
+
+int* calcLabels(float* loggamma, size_t numPoints, size_t numComponents)
+{
+	int* y = (int*)checkedCalloc(numPoints, sizeof(int));
+
+	for ( size_t i = 0; i < numPoints; i++ ) {
+		int max_j = -1;
+		float max_gamma;
+
+		for ( size_t j = 0; j < numComponents; j++ ) {
+			if ( max_j == -1 || max_gamma < loggamma[i * numComponents + j] ) {
+				max_j = j;
+				max_gamma = loggamma[i * numComponents + j];
+			}
+		}
+
+		y[i] = max_j;
+	}
+
+	return y;
 }
 
 float* generateGmmData(
@@ -386,7 +408,7 @@ float* generateGmmData(
 ) {
 	float* X = (float*)checkedCalloc(numPoints * pointDim, sizeof(float));
 
-	// Select mixture coefficients (could sample this from Dirichlet, but this is 
+	// Select mixture coefficients (could sample this from Dirichlet, but this is
 	// computationally more efficient.)
 	float pi[numComponents];
 	float piSum = 0;
@@ -453,7 +475,7 @@ float* generateGmmData(
 	return X;
 }
 
-void printGmmToConsole(GMM* gmm) { 
+void printGmmToConsole(GMM* gmm) {
 	assert(gmm != NULL);
 
 	fprintf(stdout, "{\n");
@@ -462,7 +484,7 @@ void printGmmToConsole(GMM* gmm) {
 	fprintf(stdout, "\"mixtures\" : [\n");
 	for (size_t k = 0; k < gmm->numComponents; ++k) {
 		printToConsole(& gmm->components[k], gmm->pointDim);
-		if(k + 1 != gmm->numComponents) { 
+		if(k + 1 != gmm->numComponents) {
 			fprintf(stdout, ", ");
 		}
 	}

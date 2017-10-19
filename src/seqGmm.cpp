@@ -67,7 +67,6 @@ GMM* fit(
 		);
 
 		if(!shouldContinue(prevLogL, currentLogL, tolerance)) {
-			gmm->logL = currentLogL;
 			break;
 		}
 
@@ -90,6 +89,10 @@ GMM* fit(
 		);
 
 	} while (++iteration < maxIterations);
+
+	// save outputs
+	gmm->y_pred = calcLabels(loggamma, numPoints, numComponents);
+	gmm->logL = currentLogL;
 
 	free(logpi);
 	free(loggamma);
