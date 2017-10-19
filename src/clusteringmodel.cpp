@@ -32,11 +32,11 @@ GMM * ClusteringModel::run(const float *X, int n, int d)
 	GMM *min_model = nullptr;
 
 	for ( GMM *gmm : models ) {
+		if ( gmm->failed ) {
+			continue;
+		}
+
 		float criterion = BIC(gmm, n, d);
-
-		printGmmToConsole(gmm);
-		fprintf(stdout, "BIC: %f\n", criterion);
-
 
 		if ( min_model == nullptr || criterion < min_criterion ) {
 			min_criterion = criterion;
@@ -49,6 +49,10 @@ GMM * ClusteringModel::run(const float *X, int n, int d)
 		if ( gmm != min_model ) {
 			freeGMM(gmm);
 		}
+	}
+
+	if ( min_model == nullptr ) {
+		fprintf(stderr, "warning: all models failed\n");
 	}
 
 	return min_model;

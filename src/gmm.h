@@ -14,6 +14,7 @@ typedef struct {
 	Component* components;
 
 	// The output labels and final log-likelihood
+	bool failed;
 	int* y_pred;
 	float logL;
 } GMM;

@@ -57,6 +57,8 @@ int main(int argc, char** argv) {
 	gettimeofday(&stop, NULL);
 	float elapsedSec = calcElapsedSec(&start, &stop);
 
+	printGmmToConsole(gmm);
+
 	fprintf(stdout, "\n");
 	print_vector(gmm->y_pred, numPoints);
 	fprintf(stdout, "\n");

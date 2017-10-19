@@ -62,6 +62,9 @@ GMM* initGMM(
 		prepareCovariance(component, pointDim);
 	}
 
+	gmm->failed = false;
+	gmm->y_pred = nullptr;
+	gmm->logL = INFINITY;
 
 	return gmm;
 }

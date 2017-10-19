@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdexcept>
 
 #include "linearAlgebra.h"
 
@@ -57,18 +58,8 @@ void choleskyDecomposition(const float* A, const size_t pointDim, float* L) {
 
 		sum = A[k * pointDim + k] - sum;
 		if (sum <= FLT_EPSILON) {
-			fprintf(stdout, "A:\n");
-			for(size_t i = 0; i < pointDim; ++i) {
-				for(size_t j = 0; j < pointDim; ++j) {
-					fprintf(stdout, "%f ", A[i*pointDim+j]);
-				}
-				fprintf(stdout, "\n");
-			}
-
 			// If this happens then we are not positive definite.
-			fprintf(stdout, "A must be positive definite. (sum = %E)\n", sum);
-			assert(sum > 0);
-			break;
+			throw std::runtime_error("A must be positive definite");
 		}
 
 		L[k * pointDim + k] = sqrtf(sum);
