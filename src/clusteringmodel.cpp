@@ -17,13 +17,15 @@ float BIC(GMM *gmm, int n, int d)
 	return logf(n) * p - 2 * gmm->logL;
 }
 
-GMM * ClusteringModel::run(const float *X, int n, int d)
+GMM * ClusteringModel::run(const float *X, int n, int d, bool gpu)
 {
 	// run each clustering model
 	std::vector<GMM *> models;
 
 	for ( int k : _components ) {
-		GMM *gmm = cudaFit(X, n, d, k, 100);
+		GMM *gmm = gpu
+			? cudaFit(X, n, d, k, 100)
+			: fit(X, n, d, k, 100);
 
 		models.push_back(gmm);
 	}

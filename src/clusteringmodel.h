@@ -12,7 +12,7 @@ public:
 	ClusteringModel(const std::vector<int>& components);
 	~ClusteringModel() {};
 
-	GMM * run(const float *X, int n, int d);
+	GMM * run(const float *X, int n, int d, bool gpu);
 };
 
 #endif

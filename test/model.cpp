@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "datFile.h"
@@ -10,7 +11,7 @@
 
 void usage(const char* programName) {
 	assert(programName != NULL);
-	fprintf(stdout, "%s <train.dat> <min-k> <max-k>\n", programName);
+	fprintf(stderr, "usage: %s --data [datfile] --min-k [N] --max-k [N] [--gpu]\n", programName);
 }
 
 void print_vector(int* v, int n)
@@ -22,16 +23,42 @@ void print_vector(int* v, int n)
 }
 
 int main(int argc, char** argv) {
-	if(argc != 4) {
+	const char *filename = nullptr;
+	size_t min_k = 1;
+	size_t max_k = 5;
+	bool gpu = false;
+
+	for ( int i = 1; i < argc; i++ ) {
+		if ( strcmp(argv[i], "--data") == 0 ) {
+			filename = argv[i + 1];
+			i++;
+		}
+		else if ( strcmp(argv[i], "--min-k") == 0 ) {
+			min_k = atoi(argv[i + 1]);
+			i++;
+		}
+		else if ( strcmp(argv[i], "--max-k") == 0 ) {
+			max_k = atoi(argv[i + 1]);
+			i++;
+		}
+		else if ( strcmp(argv[i], "--gpu") == 0 ) {
+			gpu = true;
+		}
+		else {
+			fprintf(stderr, "error: unknown option \"%s\"\n", argv[i]);
+			usage(argv[0]);
+			return EXIT_FAILURE;
+		}
+	}
+
+	if ( filename == nullptr ) {
+		fprintf(stderr, "error: data file is required\n");
 		usage(argv[0]);
 		return EXIT_FAILURE;
 	}
 
-	size_t min_k = atoi(argv[2]);
-	size_t max_k = atoi(argv[3]);
-
 	size_t numPoints = 0, pointDim = 0;
-	float* data = parseDatFile(argv[1], &numPoints, &pointDim);
+	float* data = parseDatFile(filename, &numPoints, &pointDim);
 	if(data == NULL) {
 		return EXIT_FAILURE;
 	}
@@ -52,7 +79,7 @@ int main(int argc, char** argv) {
 	struct timeval start, stop;
 	gettimeofday(&start, NULL);
 
-	GMM *gmm = model.run(data, numPoints, pointDim);
+	GMM *gmm = model.run(data, numPoints, pointDim, gpu);
 
 	gettimeofday(&stop, NULL);
 	float elapsedSec = calcElapsedSec(&start, &stop);
@@ -64,7 +91,7 @@ int main(int argc, char** argv) {
 	fprintf(stdout, "\n");
 
 	fprintf(stdout, "{\n");
-	fprintf(stdout, "\"file\": \"%s\",\n", argv[1]);
+	fprintf(stdout, "\"file\": \"%s\",\n", filename);
 	fprintf(stdout, "\"elapsedSec\": %.6f,\n", elapsedSec);
 	fprintf(stdout, "}\n");
 
