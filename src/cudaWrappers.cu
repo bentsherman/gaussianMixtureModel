@@ -2,6 +2,7 @@
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdexcept>
 
 // Intentionally not including header since it is meant for gcc consumption.
 // #include "cudaWrappers.h"
@@ -10,6 +11,7 @@
 #include "cudaFolds.hu"
 #include "cudaGmm.hu"
 #include "cudaMVNormal.hu"
+#include "gmm.h"
 
 void gpuSum(size_t numPoints, const size_t pointDim, float* host_a, float* host_sum) {
 	assert(numPoints > 0);
@@ -187,7 +189,8 @@ void gpuGmmFit(
 	float* Sigma,
 	float* SigmaL,
 	float* normalizers,
-	const size_t maxIterations
+	const size_t maxIterations,
+	GMM* gmm
 ) {
 	assert(X != NULL);
 	assert(numPoints > 0);
@@ -257,178 +260,212 @@ void gpuGmmFit(
 		cudaEventCreateWithFlags(& kernelEvent[k], cudaEventDisableTiming);
 	}
 
-	do {
-		// --------------------------------------------------------------------------
-		// E-Step
-		// --------------------------------------------------------------------------
+	try {
+		do {
+			// --------------------------------------------------------------------------
+			// E-Step
+			// --------------------------------------------------------------------------
 
-		// loggamma[k * numPoints + i] = p(x_i | mu_k, Sigma_k )
-		for(size_t k = 0; k < numComponents; ++k) {
-			// Fill in numPoint many probabilities
-			kernLogMVNormDist<<<grid, block, 0, streams[k]>>>(
-				numPoints, pointDim,
-				device_X,
-				& device_Mu[k * pointDim],
-				& device_SigmaL[k * pointDim * pointDim],
-				& device_loggamma[k * numPoints]
+			// loggamma[k * numPoints + i] = p(x_i | mu_k, Sigma_k )
+			for(size_t k = 0; k < numComponents; ++k) {
+				// Fill in numPoint many probabilities
+				kernLogMVNormDist<<<grid, block, 0, streams[k]>>>(
+					numPoints, pointDim,
+					device_X,
+					& device_Mu[k * pointDim],
+					& device_SigmaL[k * pointDim * pointDim],
+					& device_loggamma[k * numPoints]
+				);
+
+				cudaEventRecord(kernelEvent[k], streams[k]);
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				// streams[numComponents - 1] needs to wait for everyone else to finish
+				cudaStreamWaitEvent(streams[numComponents-1], kernelEvent[k], 0);
+			}
+
+			// loggamma[k * numPoints + i] = p(x_i | mu_k, Sigma_k) / p(x_i)
+			// working[i] = p(x_i)
+			kernCalcLogLikelihoodAndGammaNK<<<grid, block, 0, streams[numComponents - 1]>>>(
+				numPoints, numComponents,
+				device_logpi, device_working, device_loggamma
 			);
 
-			cudaEventRecord(kernelEvent[k], streams[k]);
-		}
+			// working[0] = sum_{i} p(x_i)
+			cudaArraySum(&deviceProp, numPoints, 1, device_working, streams[numComponents - 1]);
 
-		for(size_t k = 0; k < numComponents; ++k) {
-			// streams[numComponents - 1] needs to wait for everyone else to finish
-			cudaStreamWaitEvent(streams[numComponents-1], kernelEvent[k], 0);
-		}
+			previousLogL = *pinnedCurrentLogL;
+			check(cudaMemcpyAsync(
+				pinnedCurrentLogL, device_working,
+				sizeof(float),
+				cudaMemcpyDeviceToHost,
+				streams[numComponents - 1]
+			));
 
-		// loggamma[k * numPoints + i] = p(x_i | mu_k, Sigma_k) / p(x_i)
-		// working[i] = p(x_i)
-		kernCalcLogLikelihoodAndGammaNK<<<grid, block, 0, streams[numComponents - 1]>>>(
-			numPoints, numComponents,
-			device_logpi, device_working, device_loggamma
-		);
+			for(size_t k = 0; k < numComponents; ++k) {
+				// synchronize everybody with the host
+				cudaStreamSynchronize(streams[k]);
+			}
 
-		// working[0] = sum_{i} p(x_i)
-		cudaArraySum(&deviceProp, numPoints, 1, device_working, streams[numComponents - 1]);
+			if(fabsf(*pinnedCurrentLogL - previousLogL) < tolerance || *pinnedCurrentLogL < previousLogL) {
+				break;
+			}
 
-		previousLogL = *pinnedCurrentLogL;
-		check(cudaMemcpyAsync(
-			pinnedCurrentLogL, device_working,
-			sizeof(float),
-			cudaMemcpyDeviceToHost,
-			streams[numComponents - 1]
+			// --------------------------------------------------------------------------
+			// M-Step
+			// --------------------------------------------------------------------------
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				cudaLogSumExp(
+					& deviceProp, grid, block,
+					numPoints,
+					& device_loggamma[k * numPoints], & device_logGamma[k * numPoints],
+					device_workingK,
+					streams[k]
+				);
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				// working[i * pointDim + j] = gamma_ik / Gamma K * x_j
+				kernCalcMu<<<grid, block, 0, streams[k]>>>(
+					numPoints, pointDim,
+					device_X,
+					& device_loggamma[k * numPoints],
+					& device_logGamma[k * numPoints],
+					device_workingK
+				);
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				// working[0 + j] = sum gamma_ik / Gamma K * x_j
+				cudaArraySum(
+					&deviceProp, numPoints, pointDim,
+					device_workingK,
+					streams[k]
+				);
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				check(cudaMemcpyAsync(
+					& device_Mu[k * pointDim],
+					device_workingK,
+					pointDim * sizeof(float),
+					cudaMemcpyDeviceToDevice,
+					streams[k]
+				));
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				check(cudaMemcpyAsync(
+					& device_Sigma[k * pointDim * pointDim],
+					device_workingK,
+					pointDim * pointDim * sizeof(float),
+					cudaMemcpyDeviceToDevice,
+					streams[k]
+				));
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				kernCalcSigma<<<grid, block, 0, streams[k]>>>(
+					numPoints, pointDim,
+					device_X,
+					& device_Mu[k * pointDim],
+					& device_loggamma[k * numPoints],
+					& device_logGamma[k * numPoints],
+					device_workingK
+				);
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				// working[0 + j] = sum gamma_ik / Gamma K * [...]_j
+				cudaArraySum(
+					&deviceProp, numPoints, pointDim * pointDim,
+					device_workingK,
+					streams[k]
+				);
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
+				check(cudaMemcpyAsync(
+					& device_Sigma[k * pointDim * pointDim],
+					device_workingK,
+					pointDim * pointDim * sizeof(float),
+					cudaMemcpyDeviceToDevice,
+					streams[k]
+				));
+
+				cudaEventRecord(kernelEvent[k], streams[k]);
+			}
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				// streams[numComponents - 1] needs to wait for everyone else to finish
+				cudaStreamWaitEvent(streams[numComponents-1], kernelEvent[k], 0);
+			}
+
+			// pi_k^(t+1) = pi_k Gamma_k / sum_{i}^{K} pi_i * Gamma_i
+			// Use thread sync to compute denom to avoid data race
+			kernUpdatePi<<<1, numComponents, 0, streams[numComponents - 1]>>>(
+				numPoints, numComponents,
+				device_logpi, device_logGamma
+			);
+
+			// recompute sigmaL and normalizer
+			kernPrepareCovariances<<<1, numComponents, 0, streams[numComponents - 1]>>>(
+				numComponents, pointDim,
+				device_Sigma, device_SigmaL,
+				device_normalizers
+			);
+
+			cudaEventRecord(kernelEvent[numComponents], streams[numComponents - 1]);
+
+			for(size_t k = 0; k < numComponents; ++k) {
+				// Everyone needs to wait for the work on streams[numComponents - 1] to finish.
+				cudaStreamWaitEvent(streams[k], kernelEvent[numComponents], 0);
+			}
+
+			// check SigmaL to see if inverse failed
+			check(cudaMemcpy(
+				SigmaL,
+				device_SigmaL,
+				numComponents * pointDim * pointDim,
+				cudaMemcpyDeviceToHost
+			));
+
+			for ( size_t k = 0; k < numComponents; k++ ) {
+				if ( isnan(SigmaL[k * pointDim * pointDim]) ) {
+					throw std::runtime_error("Failed to compute inverse");
+				}
+			}
+
+		} while(++iteration < maxIterations);
+
+		// copy loggamma to host to compute output labels
+		float* loggamma = (float *)malloc(numPoints * numComponents * sizeof(float));
+
+		check(cudaMemcpy(
+			loggamma,
+			device_loggamma,
+			numPoints * numComponents * sizeof(float),
+			cudaMemcpyDeviceToHost
 		));
 
-		for(size_t k = 0; k < numComponents; ++k) {
-			// synchronize everybody with the host
-			cudaStreamSynchronize(streams[k]);
-		}
-
-		if(fabsf(*pinnedCurrentLogL - previousLogL) < tolerance || *pinnedCurrentLogL < previousLogL) {
-			break;
-		}
-
-		// --------------------------------------------------------------------------
-		// M-Step
-		// --------------------------------------------------------------------------
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			cudaLogSumExp(
-				& deviceProp, grid, block,
-				numPoints,
-				& device_loggamma[k * numPoints], & device_logGamma[k * numPoints],
-				device_workingK,
-				streams[k]
-			);
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			// working[i * pointDim + j] = gamma_ik / Gamma K * x_j
-			kernCalcMu<<<grid, block, 0, streams[k]>>>(
-				numPoints, pointDim,
-				device_X,
-				& device_loggamma[k * numPoints],
-				& device_logGamma[k * numPoints],
-				device_workingK
-			);
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			// working[0 + j] = sum gamma_ik / Gamma K * x_j
-			cudaArraySum(
-				&deviceProp, numPoints, pointDim,
-				device_workingK,
-				streams[k]
-			);
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			check(cudaMemcpyAsync(
-				& device_Mu[k * pointDim],
-				device_workingK,
-				pointDim * sizeof(float),
-				cudaMemcpyDeviceToDevice,
-				streams[k]
-			));
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			check(cudaMemcpyAsync(
-				& device_Sigma[k * pointDim * pointDim],
-				device_workingK,
-				pointDim * pointDim * sizeof(float),
-				cudaMemcpyDeviceToDevice,
-				streams[k]
-			));
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			kernCalcSigma<<<grid, block, 0, streams[k]>>>(
-				numPoints, pointDim,
-				device_X,
-				& device_Mu[k * pointDim],
-				& device_loggamma[k * numPoints],
-				& device_logGamma[k * numPoints],
-				device_workingK
-			);
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			// working[0 + j] = sum gamma_ik / Gamma K * [...]_j
-			cudaArraySum(
-				&deviceProp, numPoints, pointDim * pointDim,
-				device_workingK,
-				streams[k]
-			);
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			float* device_workingK = & device_working[k * numPoints * pointDim * pointDim];
-			check(cudaMemcpyAsync(
-				& device_Sigma[k * pointDim * pointDim],
-				device_workingK,
-				pointDim * pointDim * sizeof(float),
-				cudaMemcpyDeviceToDevice,
-				streams[k]
-			));
-
-			cudaEventRecord(kernelEvent[k], streams[k]);
-		}
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			// streams[numComponents - 1] needs to wait for everyone else to finish
-			cudaStreamWaitEvent(streams[numComponents-1], kernelEvent[k], 0);
-		}
-
-		// pi_k^(t+1) = pi_k Gamma_k / sum_{i}^{K} pi_i * Gamma_i
-		// Use thread sync to compute denom to avoid data race
-		kernUpdatePi<<<1, numComponents, 0, streams[numComponents - 1]>>>(
-			numPoints, numComponents,
-			device_logpi, device_logGamma
-		);
-
-		// recompute sigmaL and normalizer
-		kernPrepareCovariances<<<1, numComponents, 0, streams[numComponents - 1]>>>(
-			numComponents, pointDim,
-			device_Sigma, device_SigmaL,
-			device_normalizers
-		);
-
-		cudaEventRecord(kernelEvent[numComponents], streams[numComponents - 1]);
-
-		for(size_t k = 0; k < numComponents; ++k) {
-			// Everyone needs to wait for the work on streams[numComponents - 1] to finish.
-			cudaStreamWaitEvent(streams[k], kernelEvent[numComponents], 0);
-		}
-
-	} while(++iteration < maxIterations);
+		gmm->failed = false;
+		gmm->y_pred = calcLabels(loggamma, numPoints, numComponents);
+		gmm->logL = *pinnedCurrentLogL;
+	}
+	catch ( std::runtime_error& e ) {
+		fprintf(stderr, "warning: model failed\n");
+		gmm->failed = true;
+	}
 
 	for(size_t k = 0; k <= numComponents; ++k) {
 		cudaEventDestroy(kernelEvent[k]);

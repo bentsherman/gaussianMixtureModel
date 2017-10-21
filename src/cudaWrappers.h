@@ -2,6 +2,7 @@
 #define CUDAWRAPPERS_H
 
 #include <stdlib.h>
+#include "gmm.h"
 
 void gpuGmmFit(
 	const float* X,
@@ -13,7 +14,8 @@ void gpuGmmFit(
 	float* Sigma,
 	float* SigmaL,
 	float* normalizers,
-	const size_t maxIterations
+	const size_t maxIterations,
+	GMM* gmm
 );
 
 // Wrappers for unit testing

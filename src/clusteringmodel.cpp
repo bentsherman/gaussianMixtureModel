@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdio>
 #include "clusteringmodel.h"
+#include "cudaGmm.h"
 #include "seqGmm.h"
 
 ClusteringModel::ClusteringModel(const std::vector<int>& components)
@@ -22,7 +23,7 @@ GMM * ClusteringModel::run(const float *X, int n, int d)
 	std::vector<GMM *> models;
 
 	for ( int k : _components ) {
-		GMM *gmm = fit(X, n, d, k, 100);
+		GMM *gmm = cudaFit(X, n, d, k, 100);
 
 		models.push_back(gmm);
 	}

@@ -12,7 +12,7 @@ __global__ void kernCalcLogLikelihoodAndGammaNK(
 	const size_t numPoints, const size_t numComponents,
 	const float* logpi, float* logPx, float* loggamma
 ) {
-	// loggamma[k * numPoints + i] = 
+	// loggamma[k * numPoints + i] =
 	// On Entry: log p(x_i | mu_k, Sigma_k)
 	// On exit: [log pi_k] + [log p(x_i | mu_k, sigma_k)] - [log p(x_i)]
 
@@ -68,9 +68,9 @@ __host__ float cudaGmmLogLikelihoodAndGammaNK(
 	);
 
 	cudaArraySum(
-		deviceProp, 
-		numPoints, 1, 
-		device_logPx 
+		deviceProp,
+		numPoints, 1,
+		device_logPx
 	);
 
 	check(cudaMemcpy(&logL, device_logPx, sizeof(float), cudaMemcpyDeviceToHost));
@@ -78,7 +78,7 @@ __host__ float cudaGmmLogLikelihoodAndGammaNK(
 	cudaFree(device_logPx);
 
 	// Copy back the full numPoints * numComponents values
-	check(cudaMemcpy(logP, device_logP, 
+	check(cudaMemcpy(logP, device_logP,
 		numPoints * numComponents * sizeof(float), cudaMemcpyDeviceToHost));
 
 	return logL;
@@ -95,24 +95,24 @@ __global__ void kernBiasAndLog(float* sumexp, float* bias) {
 }
 
 __host__ void cudaLogSumExp(
-	cudaDeviceProp* deviceProp, dim3 grid, dim3 block, 
+	cudaDeviceProp* deviceProp, dim3 grid, dim3 block,
 	const size_t numPoints,
-	float* device_src, float* device_dest, 
-	float* device_working, 
+	float* device_src, float* device_dest,
+	float* device_working,
 	cudaStream_t stream
 ) {
 	// dest <- src
 	check(cudaMemcpyAsync(
-		device_dest, device_src, 
-		numPoints * sizeof(float), 
+		device_dest, device_src,
+		numPoints * sizeof(float),
 		cudaMemcpyDeviceToDevice,
 		stream
 	));
 
 	// working <- src
 	check(cudaMemcpyAsync(
-		device_working, device_src, 
-		numPoints * sizeof(float), 
+		device_working, device_src,
+		numPoints * sizeof(float),
 		cudaMemcpyDeviceToDevice,
 		stream
 	));
@@ -149,7 +149,7 @@ __global__ void kernCalcMu(
 
 	const float a = expf(loggamma[i]) / expf(*GammaK);
 	const float* x = & X[i * pointDim];
-	float* y = & dest[i * pointDim]; 
+	float* y = & dest[i * pointDim];
 
 	for(size_t i = 0; i < pointDim; ++i) {
 		y[i] = a * x[i];
@@ -162,7 +162,7 @@ __global__ void kernCalcSigma(
 	float* dest
 ) {
 	assert(pointDim < 1024);
-	
+
 	// Assumes a 2D grid of 1024x1 1D blocks
 	int b = blockIdx.y * gridDim.x + blockIdx.x;
 	int i = b * blockDim.x + threadIdx.x;
@@ -174,7 +174,7 @@ __global__ void kernCalcSigma(
 
 	const float a = expf(loggamma[i]) / expf(*GammaK);
 	const float* x = & X[i * pointDim];
-	float* y = & dest[i * pointDim * pointDim]; 
+	float* y = & dest[i * pointDim * pointDim];
 
 	float u[1024];
 	for(size_t i = 0; i < pointDim; ++i) {
@@ -233,7 +233,7 @@ __global__ void kernPrepareCovariances(
 	const size_t ALen = pointDim * pointDim;
 	float* A = & Sigma[comp * ALen];
 	float* L = & SigmaL[comp * ALen];
-	for(size_t i = 0; i < ALen; ++i) { 
+	for(size_t i = 0; i < ALen; ++i) {
 		L[i] = 0;
 	}
 
@@ -249,9 +249,8 @@ __global__ void kernPrepareCovariances(
 
 		sum = A[k * pointDim + k] - sum;
 		if (sum <= FLT_EPSILON) {
-			printf("A must be positive definite. (sum = %E)\n", sum);
-			assert(sum > 0);
-			break;
+			L[0] = NAN;
+			return;
 		}
 
 		L[k * pointDim + k] = sqrtf(sum);

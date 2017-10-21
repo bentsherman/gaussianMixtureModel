@@ -10,9 +10,9 @@
 #include "cudaWrappers.h"
 
 GMM* cudaFit(
-	const float* X, 
-	const size_t numPoints, 
-	const size_t pointDim, 
+	const float* X,
+	const size_t numPoints,
+	const size_t pointDim,
 	const size_t numComponents,
 	const size_t maxIterations
 ) {
@@ -20,12 +20,12 @@ GMM* cudaFit(
 	assert(numPoints > 0);
 	assert(pointDim > 0);
 	assert(numComponents > 0);
-	
+
 	GMM* gmm = initGMM(X, numPoints, pointDim, numComponents);
 
 	float* pi = (float*) malloc(numComponents * sizeof(float));
 	float* Mu = (float*) malloc(numComponents * pointDim * sizeof(float));
-	float* Sigma = (float*) malloc(numComponents * pointDim * pointDim * sizeof(float));	
+	float* Sigma = (float*) malloc(numComponents * pointDim * pointDim * sizeof(float));
 	float* SigmaL = (float*) malloc(numComponents * pointDim * pointDim * sizeof(float));
 	float* normalizers = (float*) malloc(numComponents * sizeof(float));
 
@@ -44,7 +44,8 @@ GMM* cudaFit(
 		numPoints, pointDim, numComponents,
 		pi, Mu, Sigma,
 		SigmaL, normalizers,
-		maxIterations
+		maxIterations,
+		gmm
 	);
 
 	for(size_t k = 0; k < numComponents; ++k) {
