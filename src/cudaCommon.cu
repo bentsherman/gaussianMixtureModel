@@ -28,7 +28,7 @@ __host__ size_t largestPowTwoLessThanEq(size_t N) {
 	if(M == N) {
 		return M;
 	} // PC: M > N
-	
+
 	return M / 2;
 }
 
@@ -106,7 +106,7 @@ __host__ void recvDeviceUnpinHost(float* device, float* host, const size_t N) {
 	cudaHostUnregister(host);
 }
 
-__host__ void unpinHost(float* device, float* host) {
+__host__ void unpinHost(void* device, void* host) {
 	cudaFree(device);
 	cudaHostUnregister(host);
 }

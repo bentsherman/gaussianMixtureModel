@@ -214,7 +214,8 @@ __global__ void kernUpdatePi(
 __global__ void kernPrepareCovariances(
 	const size_t numComponents, const size_t pointDim,
 	float* Sigma, float* SigmaL,
-	float* normalizers
+	float* normalizers,
+	int *error
 ) {
 	// Parallel in the number of components
 
@@ -249,7 +250,7 @@ __global__ void kernPrepareCovariances(
 
 		sum = A[k * pointDim + k] - sum;
 		if (sum <= FLT_EPSILON) {
-			L[0] = NAN;
+			*error = 1;
 			return;
 		}
 

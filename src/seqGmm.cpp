@@ -98,6 +98,7 @@ GMM* fit(
 		gmm->logL = currentLogL;
 	}
 	catch ( std::runtime_error& e ) {
+		fprintf(stderr, "warning: model failed\n");
 		gmm->failed = true;
 	}
 

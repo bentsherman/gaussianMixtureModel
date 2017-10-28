@@ -17,13 +17,13 @@ __host__ float cudaGmmLogLikelihoodAndGammaNK(
 
 __global__ void kernExp(float* A, float* bias);
 
-__global__ void kernBiasAndLog(float* sumexp, float* bias); 
+__global__ void kernBiasAndLog(float* sumexp, float* bias);
 
 __host__ void cudaLogSumExp(
-	cudaDeviceProp* deviceProp, dim3 grid, dim3 block, 
+	cudaDeviceProp* deviceProp, dim3 grid, dim3 block,
 	const size_t numPoints,
-	float* device_src, float* device_dest, 
-	float* device_working, 
+	float* device_src, float* device_dest,
+	float* device_working,
 	cudaStream_t stream
 );
 
@@ -42,7 +42,8 @@ __global__ void kernCalcSigma(
 __global__ void kernPrepareCovariances(
 	const size_t numComponents, const size_t pointDim,
 	float* Sigma, float* SigmaL,
-	float* normalizers
+	float* normalizers,
+	int* error
 );
 
 __global__ void kernUpdatePi(

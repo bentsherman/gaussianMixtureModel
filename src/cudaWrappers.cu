@@ -230,6 +230,9 @@ void gpuGmmFit(
 	float* device_SigmaL = pinHostAndSendDevice(numComponents * pointDim * pointDim, SigmaL);
 	float* device_normalizers = pinHostAndSendDevice(numComponents, normalizers);
 
+	int error = 0;
+	int* device_error = (int*) pinHostAndSendDevice(1, (float*) &error);
+
 	float* device_loggamma = mallocOnGpu(numPoints * numComponents);
 	float* device_logGamma = mallocOnGpu(numPoints * numComponents);
 
@@ -422,7 +425,8 @@ void gpuGmmFit(
 			kernPrepareCovariances<<<1, numComponents, 0, streams[numComponents - 1]>>>(
 				numComponents, pointDim,
 				device_Sigma, device_SigmaL,
-				device_normalizers
+				device_normalizers,
+				device_error
 			);
 
 			cudaEventRecord(kernelEvent[numComponents], streams[numComponents - 1]);
@@ -432,18 +436,11 @@ void gpuGmmFit(
 				cudaStreamWaitEvent(streams[k], kernelEvent[numComponents], 0);
 			}
 
-			// check SigmaL to see if inverse failed
-			check(cudaMemcpy(
-				SigmaL,
-				device_SigmaL,
-				numComponents * pointDim * pointDim,
-				cudaMemcpyDeviceToHost
-			));
+			// check error to see if inverse failed
+			check(cudaMemcpy(&error, device_error, sizeof(int), cudaMemcpyDeviceToHost));
 
-			for ( size_t k = 0; k < numComponents; k++ ) {
-				if ( isnan(SigmaL[k * pointDim * pointDim]) ) {
-					throw std::runtime_error("Failed to compute inverse");
-				}
+			if ( error ) {
+				throw std::runtime_error("Failed to compute inverse");
 			}
 
 		} while(++iteration < maxIterations);
@@ -480,6 +477,7 @@ void gpuGmmFit(
 	cudaFree(device_logGamma);
 	cudaFree(device_loggamma);
 
+	unpinHost(device_error, &error);
 	recvDeviceUnpinHost(device_normalizers, normalizers, numComponents);
 	recvDeviceUnpinHost(device_SigmaL, SigmaL, numComponents * pointDim * pointDim);
 	recvDeviceUnpinHost(device_Sigma, Sigma, numComponents * pointDim * pointDim);
